@@ -170,8 +170,8 @@ typedef
       /* 912 */ ULong guest_IP_AT_SYSCALL;
 
       /* Padding to make it have an 16-aligned size */
-      /* 918 */ ULong pad3;
-   }  /* 926 */
+      /* 920 */ ULong pad3;
+   }  /* 928 */
    VexGuestAMD64State;
 
 
