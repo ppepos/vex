@@ -1,0 +1,10 @@
+#include "{{ filename }}"
+#include <stdio.h>
+
+#define offsetof(struc, x) ((long)(&((struc*)0)->x))
+
+int main() {
+{% for field in fields %}
+   printf("%ld\n", offsetof({{ structure }}, {{ field }}));
+{% endfor %}
+}
