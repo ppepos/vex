@@ -100,6 +100,20 @@ typedef  unsigned char  Bool;
 #define  True   ((Bool)1)
 #define  False  ((Bool)0)
 
+/* The Visual Studio compiler doesn't support the inline attribute natively...
+   Define it here */
+#ifdef _WIN32
+#define WIN_NOP(x)
+#define inline __inline
+#define __inline__ __inline
+#define __attribute__ WIN_NOP
+#define castas WIN_NOP
+#define __builtin_memset memset
+#define __builtin_memcpy memcpy
+#else
+#define castas(x) (__typeof__(x))
+#endif
+
 /* Use this to coerce the result of a C comparison to a Bool.  This is
    useful when compiling with Intel icc with ultra-paranoid
    compilation flags (-Wall). */
@@ -147,11 +161,11 @@ typedef  unsigned long HWord;
 #undef VEX_REGPARM
 
 /* The following 4 work OK for Linux. */
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(_WIN64)
 #   define VEX_HOST_WORDSIZE 8
 #   define VEX_REGPARM(_n) /* */
 
-#elif defined(__i386__)
+#elif defined(__i386__) || (defined(_WIN32) && !defined(_WIN64))
 #   define VEX_HOST_WORDSIZE 4
 #   define VEX_REGPARM(_n) __attribute__((regparm(_n)))
 

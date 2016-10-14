@@ -84,9 +84,16 @@ static size_t OFFB_PC = 0;
 /*---                  Debugging output                    ---*/
 /*------------------------------------------------------------*/
 
+#ifndef _WIN32
 #define DIP(format, args...)           \
    if (vex_traceflags & VEX_TRACE_FE)  \
       vex_printf(format, ## args)
+
+#else
+#define DIP(format, ...)           \
+   if (vex_traceflags & VEX_TRACE_FE)  \
+      vex_printf(format, __VA_ARGS__)
+#endif
 
 /*------------------------------------------------------------*/
 /*--- Helper bits and pieces for deconstructing the        ---*/

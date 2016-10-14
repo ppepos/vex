@@ -252,6 +252,7 @@ static void* fnptr_to_fnentry( const VexAbiInfo* vbi, void* f )
 /*--- Debugging output                                     ---*/
 /*------------------------------------------------------------*/
 
+#ifndef _WIN32
 #define DIP(format, args...)           \
    if (vex_traceflags & VEX_TRACE_FE)  \
       vex_printf(format, ## args)
@@ -259,6 +260,15 @@ static void* fnptr_to_fnentry( const VexAbiInfo* vbi, void* f )
 #define DIS(buf, format, args...)      \
    if (vex_traceflags & VEX_TRACE_FE)  \
       vex_sprintf(buf, format, ## args)
+#else
+#define DIP(format, ...)           \
+   if (vex_traceflags & VEX_TRACE_FE)  \
+      vex_printf(format, __VA_ARGS__)
+
+#define DIS(buf, format, ...)      \
+   if (vex_traceflags & VEX_TRACE_FE)  \
+      vex_sprintf(buf, format, __VA_ARGS__)
+#endif
 
 
 /*------------------------------------------------------------*/
