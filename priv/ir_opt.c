@@ -1042,7 +1042,9 @@ static UInt num_nodes_visited;
    wrapper that deals with the common tags-don't-match case, and a
    slower out of line general case.  Saves a few insns. */
 
+#ifndef _WIN32
 __attribute__((noinline))
+#endif
 static Bool sameIRExprs_aux2 ( IRExpr** env, IRExpr* e1, IRExpr* e2 );
 
 inline
@@ -1052,7 +1054,9 @@ static Bool sameIRExprs_aux ( IRExpr** env, IRExpr* e1, IRExpr* e2 )
    return sameIRExprs_aux2(env, e1, e2);
 }
 
+#ifndef _WIN32
 __attribute__((noinline))
+#endif
 static Bool sameIRExprs_aux2 ( IRExpr** env, IRExpr* e1, IRExpr* e2 )
 {
    if (num_nodes_visited++ > NODE_LIMIT) return False;
@@ -2761,7 +2765,7 @@ IRSB* cprop_BB ( IRSB* in )
    IRExpr** env = LibVEX_Alloc_inline(n_tmps * sizeof(IRExpr*));
    /* Keep track of IRStmt_LoadGs that we need to revisit after
       processing all the other statements. */
-   const Int N_FIXUPS = 16;
+#  define N_FIXUPS 16
    Int fixups[N_FIXUPS]; /* indices in the stmt array of 'out' */
    Int n_fixups = 0;
 
@@ -4976,7 +4980,9 @@ typedef
    }
    ATmpInfo;
 
+#ifndef _WIN32
 __attribute__((unused))
+#endif
 static void ppAEnv ( ATmpInfo* env )
 {
    Int i;
@@ -5975,7 +5981,9 @@ static Interval stmt_modifies_guest_state (
 
 
 /* Helper function for debug printing */
+#ifndef _WIN32
 __attribute__((unused))
+#endif
 static void print_flat_expr ( IRExpr** env, IRExpr* e )
 {
    if (e == NULL) {

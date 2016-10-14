@@ -45,8 +45,13 @@
 #define NULL ((void*)0)
 #endif
 
+#ifndef _WIN32
 #define LIKELY(x)       __builtin_expect(!!(x), 1)
 #define UNLIKELY(x)     __builtin_expect(!!(x), 0)
+#else
+#define LIKELY(x)       (x)
+#define UNLIKELY(x)     (x)
+#endif
 
 #if !defined(offsetof)
 #   define offsetof(type,memb) ((SizeT)(HWord)&((type*)0)->memb)
@@ -57,29 +62,48 @@
                                      __attribute__((unused))
 
 /* Stuff for panicking and assertion. */
-
+#ifdef _WIN32
+#define __PRETTY_FUNCTION__ __FUNCDNAME__
+#endif
 #define vassert(expr)                                           \
   ((void) (LIKELY(expr) ? 0 :                                   \
            (vex_assert_fail (#expr,                             \
                              __FILE__, __LINE__,                \
                              __PRETTY_FUNCTION__), 0)))
 
+#ifdef _WIN32
+__declspec(noreturn)
+#else
 __attribute__ ((__noreturn__))
+#endif
 extern void vex_assert_fail ( const HChar* expr, const HChar* file,
                               Int line, const HChar* fn );
+							  
+#ifdef _WIN32
+__declspec(noreturn)
+#else
 __attribute__ ((__noreturn__))
+#endif
 extern void vpanic ( const HChar* str );
 
+#ifdef _WIN32
+__declspec(noreturn)
+#else
 __attribute__ ((__noreturn__)) __attribute__ ((format (printf, 1, 2)))
+#endif
 extern void vfatal ( const HChar* format, ... );
 
 
 /* Printing */
 
+#ifndef _WIN32
 __attribute__ ((format (printf, 1, 2)))
+#endif
 extern UInt vex_printf ( const HChar *format, ... );
 
+#ifndef _WIN32
 __attribute__ ((format (printf, 2, 3)))
+#endif
 extern UInt vex_sprintf ( HChar* buf, const HChar *format, ... );
 
 extern void print_backtrace();
@@ -119,7 +143,12 @@ extern void vexSetAllocModeTEMP_and_clear ( void );
 extern HChar* private_LibVEX_alloc_first;
 extern HChar* private_LibVEX_alloc_curr;
 extern HChar* private_LibVEX_alloc_last;
-extern void   private_LibVEX_alloc_OOM(void) __attribute__((noreturn));
+#ifdef _WIN32
+__declspec(noreturn)
+#else
+__attribute__ ((__noreturn__))
+#endif
+extern void   private_LibVEX_alloc_OOM(void);
 
 /* Allocated memory as returned by LibVEX_Alloc will be aligned on this
    boundary. */

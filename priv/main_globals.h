@@ -47,7 +47,9 @@
 extern Bool vex_initdone;
 
 /* failure exit function */
+#ifndef _WIN32
 __attribute__ ((noreturn))
+#endif
 extern void (*vex_failure_exit) ( void );
 
 /* logging output function */

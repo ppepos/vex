@@ -2673,10 +2673,13 @@ typedef
       union {
          /* A no-op (usually resulting from IR optimisation).  Can be
             omitted without any effect.
+			
+			dummy member to allow compiling under MSVC
 
             ppIRStmt output: IR-NoOp
          */
          struct {
+			 UInt dummy;
 	 } NoOp;
 
          /* META: instruction mark.  Marks the start of the statements
