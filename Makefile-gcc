@@ -14,6 +14,8 @@ PUB_HEADERS = 	pub/libvex_basictypes.h 		\
 		pub/libvex_guest_mips32.h		\
 		pub/libvex_guest_offsets.h		\
 		pub/libvex_guest_tilegx.h		\
+		pub/libvex_guest_tilegx.h		\
+		pub/libvex_guest_pep8.h			\
 		pub/e4c_lite.h
 
 PRIV_HEADERS = 	priv/host_x86_defs.h			\
@@ -37,6 +39,7 @@ PRIV_HEADERS = 	priv/host_x86_defs.h			\
 		priv/guest_ppc_defs.h			\
 		priv/guest_mips_defs.h			\
 		priv/guest_tilegx_defs.h		\
+		priv/guest_pep8_defs.h			\
 		priv/tilegx_disasm.h		        \
 		priv/s390_disasm.h		        \
 		priv/s390_defs.h		        \
@@ -92,6 +95,7 @@ LIB_OBJS = 	priv/ir_defs.o                          \
 		priv/guest_s390_toIR.o			\
 		priv/guest_mips_toIR.o			\
 		priv/guest_tilegx_toIR.o		\
+		priv/guest_pep8_toIR.o			\
 		priv/e4c_lite.o
 
 PUB_INCLUDES = -Ipub
@@ -442,6 +446,10 @@ priv/guest_mips_helpers.o: $(ALL_HEADERS) priv/guest_mips_helpers.c
 priv/guest_mips_toIR.o: $(ALL_HEADERS) priv/guest_mips_toIR.c
 	$(CC) $(CCFLAGS) $(ALL_INCLUDES) -o priv/guest_mips_toIR.o \
 					 -c priv/guest_mips_toIR.c
+
+priv/guest_pep8_toIR.o: $(ALL_HEADERS) priv/guest_pep8_toIR.c
+	$(CC) $(CCFLAGS) $(ALL_INCLUDES) -o priv/guest_pep8_toIR.o \
+					 -c priv/guest_pep8_toIR.c
 
 priv/guest_tilegx_helpers.o: $(ALL_HEADERS) priv/guest_tilegx_helpers.c
 	$(CC) $(CCFLAGS) $(ALL_INCLUDES) -o priv/guest_tilegx_helpers.o \
