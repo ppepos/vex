@@ -90,6 +90,155 @@ static size_t OFFB_PC = 0;
       vex_printf(format, __VA_ARGS__)
 #endif
 
+
+/*------------------------------------------------------------*/
+/*---                 Decoding functions                   ---*/
+/*------------------------------------------------------------*/
+UInt get_opcode(UChar cins)
+{
+        UInt real_bitmask;
+
+        if (cins <= 3) {
+                real_bitmask = cins >> 0;
+
+                switch (real_bitmask) {
+
+                        case 0: return PEP8_STOP;
+                        case 1: return PEP8_RETTR;
+                        case 2: return PEP8_MOVSPA;
+                        case 3: return PEP8_MOVFLGA;
+			default: {
+				return -1;
+			}
+                }
+
+        } else if (cins <= 35) {
+                real_bitmask = cins >> 1;
+                switch (real_bitmask) {
+			case 2: return PEP8_BR;
+			case 3: return PEP8_BRLE;
+			case 4: return PEP8_BRLT;
+			case 5: return PEP8_BREQ;
+			case 6: return PEP8_BRNE;
+			case 7: return PEP8_BRGE;
+			case 8: return PEP8_BRGT;
+			case 9: return PEP8_BRV;
+			case 10: return PEP8_BRC;
+			case 11: return PEP8_CALL;
+			case 12: return PEP8_NOT;
+			case 13: return PEP8_NEG;
+			case 14: return PEP8_ASL;
+			case 15: return PEP8_ASR;
+			case 16: return PEP8_ROL;
+			case 17: return PEP8_ROR;
+			default: {
+				return -1;
+			}
+                }
+        } else if (cins <= 39) {
+                real_bitmask = cins >> 2;
+		return PEP8_NOPN;
+        } else if (cins <= 111) {
+                real_bitmask = cins >> 3;
+                switch (real_bitmask) {
+			case 5: return PEP8_NOP;
+			case 6: return PEP8_DECI;
+			case 7: return PEP8_DECO;
+			case 8: return PEP8_STRO;
+			case 9: return PEP8_CHARI;
+			case 10: return PEP8_CHARO;
+			case 11: return PEP8_RETN;
+			case 12: return PEP8_ADDSP;
+			case 13: return PEP8_SUBSP;
+			default: {
+				return -1;
+			}
+                }
+        } else {
+                real_bitmask = cins >> 4;
+                switch (real_bitmask) {
+			case 7: return PEP8_ADD;
+			case 8: return PEP8_SUB;
+			case 9: return PEP8_AND;
+			case 10: return PEP8_OR;
+			case 11: return PEP8_CP;
+			case 12: return PEP8_LD;
+			case 13: return PEP8_LDBYTE;
+			case 14: return PEP8_ST;
+			case 15: return PEP8_STBYTE;
+			default: {
+				return -1;
+			}
+                }
+	}
+}
+
+
+/*------------------------------------------------------------*/
+/*---               IR Generation helpers                  ---*/
+/*------------------------------------------------------------*/
+
+static void putPC(IRExpr * e)
+{
+   stmt(IRStmt_Put(OFFB_PC, e));
+}
+
+/*------------------------------------------------------------*/
+/*---          Disassemble a single instruction            ---*/
+/*------------------------------------------------------------*/
+
+/* Disassemble a single instruction into IR. The instruction is
+   located in host memory at guest_instr, and has guest IP of
+   guest_PC_curr_instr, which will have been set before the call
+   here. */
+
+static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
+                                                                    Addr),
+                                     Bool         resteerCisOk,
+                                     void*        callback_opaque,
+                                     Long         delta64,
+                                     const VexArchInfo* archinfo,
+                                     const VexAbiInfo*  abiinfo,
+                                     Bool         sigill_diag )
+{
+	IRTemp t0, t1, t2, t3, t4, t5, t6, t7;
+
+	IRExpr *lastn = pep8_lastn;  /* last jump addr */
+	IRStmt *bstmt = pep8_bstmt;  /* branch (Exit) stmt */
+
+	DisResult dres;
+	UChar opcode;
+	UChar cins;
+
+	/* Set result defaults. */
+	dres.whatNext = Dis_Continue;
+	dres.len = 0;
+	dres.continueAt = 0;
+	dres.jk_StopHere = Ijk_INVALID;
+
+	UShort delta = (UShort) delta64;
+    const UChar *code = guest_code + delta;
+	cins = *code;
+
+	DIP("\t0x%hx:\t0x%08hhx\t", (short)guest_PC_curr_instr, cins);
+
+	IRType ty = Ity_I8;
+
+	opcode = get_opcode(cins);
+
+	switch (opcode){
+
+	case PEP8_NOP:
+		putPC(mkU8(guest_PC_curr_instr + 1));
+		dres.len = 1;
+		break;
+
+	default:
+		DIP("Instruction not implemented.");
+		break;
+	}
+
+}
 /*------------------------------------------------------------*/
 /*--- Top-level fn                                         ---*/
 /*------------------------------------------------------------*/
@@ -121,8 +270,8 @@ DisResult disInstr_PEP8( IRSB*        irsb_IN,
 
    OFFB_PC = mode64 ? offsetof(VexGuestPEP8State, guest_pc) : offsetof(VexGuestPEP8State, guest_pc);
 
-   // dres = disInstr_PEP8_WRK(resteerOkFn, resteerCisOk, callback_opaque,
-   //                          delta, archinfo, abiinfo, sigill_diag_IN);
+   dres = disInstr_PEP8_WRK(resteerOkFn, resteerCisOk, callback_opaque,
+                            delta, archinfo, abiinfo, sigill_diag_IN);
 
    return dres;
 }

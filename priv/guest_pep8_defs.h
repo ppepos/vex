@@ -35,6 +35,52 @@
 #include "libvex_basictypes.h"
 #include "guest_generic_bb_to_IR.h"  /* DisResult */
 
+
+#define PEP8_STOP 0
+#define PEP8_RETTR 1
+#define PEP8_MOVSPA 2
+#define PEP8_MOVFLGA 3
+#define PEP8_BR 4
+
+#define PEP8_BRLE 5
+#define PEP8_BRLT 6
+#define PEP8_BREQ 7
+#define PEP8_BRNE 8
+#define PEP8_BRGE 9
+#define PEP8_BRGT 10
+#define PEP8_BRV 11
+#define PEP8_BRC 12
+#define PEP8_CALL 13
+#define PEP8_NOT 14
+#define PEP8_NEG 15
+#define PEP8_ASL 16
+#define PEP8_ASR 17
+#define PEP8_ROL 18
+#define PEP8_ROR 19
+
+#define PEP8_NOPN 20
+
+#define PEP8_NOP 21
+#define PEP8_DECI 22
+#define PEP8_DECO 23
+#define PEP8_STRO 24
+#define PEP8_CHARI 25
+#define PEP8_CHARO 26
+#define PEP8_RETN 27
+#define PEP8_ADDSP 28
+#define PEP8_SUBSP 29
+
+#define PEP8_ADD 30
+#define PEP8_SUB 31
+#define PEP8_AND 32
+#define PEP8_OR 33
+#define PEP8_CP 34
+#define PEP8_LD 35
+#define PEP8_LDBYTE 36
+#define PEP8_ST 37
+#define PEP8_STBYTE 38
+
+
 /*---------------------------------------------------------*/
 /*---               pep8 to IR conversion               ---*/
 /*---------------------------------------------------------*/
