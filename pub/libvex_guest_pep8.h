@@ -41,16 +41,25 @@
 typedef
    struct {
       /* CPU Registers */
-      /* 0 */  UShort guest_a;   /* Accumulator Register */
-      /* 2 */  UShort guest_x;   /* Index Register */
-      /* 4 */  UShort guest_sp;  /* Stack Pointer */
-      /* 6 */  UShort guest_pc;  /* Program Counter */
+      /* 0 */  UInt  host_EvC_FAILADDR;
+      /* 4 */  UInt  host_EvC_COUNTER;
+      /* 8 */  UInt  pad_1;
+      /* 12 */ UInt  pad_2;
+      /* 16 */ UShort guest_a;   /* Accumulator Register */
+      /* 18 */ UShort guest_x;   /* Index Register */
+      /* 20 */ UShort guest_sp;  /* Stack Pointer */
+      /* 22 */ UShort guest_pc;  /* Program Counter */
+      /* 24 */ UShort guest_pc_at_syscall; /* Needed for syscalls */
 
       /* CPU State Flags */
-      /* 8 */  UChar guest_n;    /* Negative Flag */
-      /* 9 */  UChar guest_z;    /* Zero Flag */
-      /* 10 */ UChar guest_v;    /* Overflow Flag */
-      /* 11 */ UChar guest_c;    /* Carry Flag */
+      /* 26 */ UChar guest_n;    /* Negative Flag */
+      /* 27 */ UChar guest_z;    /* Zero Flag */
+      /* 28 */ UChar guest_v;    /* Overflow Flag */
+      /* 29 */ UChar guest_c;    /* Carry Flag */
+
+	  /* Pad to 16 byte multiple */
+      /* 30 */ UChar guest_pad0;
+      /* 31 */ UChar guest_pad1;
 
 } VexGuestPEP8State;
 

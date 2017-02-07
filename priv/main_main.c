@@ -840,7 +840,7 @@ VexTranslateResult LibVEX_Translate ( VexTranslateArgs* vta )
          guest_layout           = PEP8FN(&pep8Guest_layout);
          //offB_CMSTART           = offsetof(VexGuestPEP8State,guest_CMSTART);
          //offB_CMLEN             = offsetof(VexGuestPEP8State,guest_CMLEN);
-         offB_GUEST_IP          = offsetof(VexGuestPEP8State,guest_pc);
+         offB_GUEST_IP          = offsetof(VexGuestPEP8State, guest_pc);
          szB_GUEST_IP           = sizeof( ((VexGuestPEP8State*)0)->guest_pc );
          //offB_HOST_EvC_COUNTER  = offsetof(VexGuestPEP8State,host_EvC_COUNTER);
          //offB_HOST_EvC_FAILADDR = offsetof(VexGuestPEP8State,host_EvC_FAILADDR);
@@ -1973,6 +1973,9 @@ static void check_hwcaps ( VexArch arch, UInt hwcaps )
 
       case VexArchTILEGX:
          return;
+
+	  case VexArchPEP8:
+		 return;
 
       default:
          vpanic("unknown architecture");

@@ -97,17 +97,17 @@ VEX_REGPARM(1)
 static ULong genericg_compute_checksum_8al_12 ( HWord first_w64 );
 
 /* Small helpers */
-static Bool const_False ( void* callback_opaque, Addr a ) { 
-   return False; 
+static Bool const_False ( void* callback_opaque, Addr a ) {
+   return False;
 }
 
-/* Disassemble a complete basic block, starting at guest_IP_start, 
+/* Disassemble a complete basic block, starting at guest_IP_start,
    returning a new IRSB.  The disassembler may chase across basic
    block boundaries if it wishes and if chase_into_ok allows it.
    The precise guest address ranges from which code has been taken
    are written into vge.  guest_IP_bbstart is taken to be the IP in
    the guest's address space corresponding to the instruction at
-   &guest_code[0].  
+   &guest_code[0].
 
    dis_instr_fn is the arch-specific fn to disassemble on function; it
    is this that does the real work.
@@ -125,7 +125,7 @@ static Bool const_False ( void* callback_opaque, Addr a ) {
 
    preamble_function is a callback which allows the caller to add
    its own IR preamble (following the self-check, if any).  May be
-   NULL.  If non-NULL, the IRSB under construction is handed to 
+   NULL.  If non-NULL, the IRSB under construction is handed to
    this function, which presumably adds IR statements to it.  The
    callback may optionally complete the block and direct bb_to_IR
    not to disassemble any instructions into it; this is indicated
@@ -177,7 +177,7 @@ static Bool const_False ( void* callback_opaque, Addr a ) {
    dis_instr_fn, so any errors it makes show up sooner.
 */
 
-IRSB* bb_to_IR ( 
+IRSB* bb_to_IR (
          /*OUT*/VexGuestExtents* vge,
          /*OUT*/UInt*            n_sc_extents,
          /*OUT*/UInt*            n_guest_instrs, /* stats only */
@@ -227,11 +227,14 @@ IRSB* bb_to_IR (
    vassert(vex_control.guest_max_insns <= 100);
    vassert(vex_control.guest_chase_thresh >= 0);
    vassert(vex_control.guest_chase_thresh < vex_control.guest_max_insns);
-   vassert(guest_word_type == Ity_I32 || guest_word_type == Ity_I64);
+   vassert(guest_word_type == Ity_I32 || guest_word_type == Ity_I64 ||
+		   guest_word_type == Ity_I16);
 
    if (guest_word_type == Ity_I32) {
       vassert(szB_GUEST_IP == 4);
       vassert((offB_GUEST_IP % 4) == 0);
+   } else if (guest_word_type == Ity_I16) {
+      vassert(szB_GUEST_IP == 2);
    } else {
       vassert(szB_GUEST_IP == 8);
       vassert((offB_GUEST_IP % 8) == 0);
@@ -255,7 +258,7 @@ IRSB* bb_to_IR (
    /* Guest addresses as IRConsts.  Used in self-checks to specify the
       restart-after-discard point. */
    guest_IP_bbstart_IRConst
-      = guest_word_type==Ity_I32 
+      = guest_word_type==Ity_I32
            ? IRConst_U32(toUInt(guest_IP_bbstart))
            : IRConst_U64(guest_IP_bbstart);
 
@@ -288,7 +291,7 @@ IRSB* bb_to_IR (
 
       /* Regardless of what chase_into_ok says, is chasing permissible
          at all right now?  Set resteerOKfn accordingly. */
-      resteerOK 
+      resteerOK
          = toBool(
               n_instrs < vex_control.guest_chase_thresh
               /* we can't afford to have a resteer once we're on the
@@ -410,7 +413,8 @@ IRSB* bb_to_IR (
          instruction with an assignment to the guest PC. */
       vassert(first_stmt_idx < irsb->stmts_used);
       /* it follows that irsb->stmts_used must be > 0 */
-      { IRStmt* st = irsb->stmts[irsb->stmts_used-1];
+      {
+		IRStmt* st = irsb->stmts[irsb->stmts_used-1];
         vassert(st);
         vassert(st->tag == Ist_Put);
         vassert(st->Ist.Put.offset == offB_GUEST_IP);
@@ -424,7 +428,7 @@ IRSB* bb_to_IR (
          seems reasonable since the max possible extent length will be
          100 * 20 == 2000. */
       vassert(vge->len[vge->n_used-1] < 5000);
-      vge->len[vge->n_used-1] 
+      vge->len[vge->n_used-1]
          = toUShort(toUInt( vge->len[vge->n_used-1] + dres.len ));
       n_instrs++;
 
@@ -712,16 +716,16 @@ IRSB* bb_to_IR (
 
          IRExpr* callexpr = NULL;
          if (fn_spec) {
-            callexpr = mkIRExprCCall( 
-                          host_word_type, 1/*regparms*/, 
+            callexpr = mkIRExprCCall(
+                          host_word_type, 1/*regparms*/,
                           nm_spec, (void*)fn_spec_entry,
                           mkIRExprVec_1(
                              mkIRExpr_HWord( (HWord)first_hW )
                           )
                        );
          } else {
-            callexpr = mkIRExprCCall( 
-                          host_word_type, 2/*regparms*/, 
+            callexpr = mkIRExprCCall(
+                          host_word_type, 2/*regparms*/,
                           nm_generic, (void*)fn_generic_entry,
                           mkIRExprVec_2(
                              mkIRExpr_HWord( (HWord)first_hW ),
@@ -731,8 +735,8 @@ IRSB* bb_to_IR (
          }
 
          irsb->stmts[selfcheck_idx + i * 5 + 4]
-            = IRStmt_Exit( 
-                 IRExpr_Binop( 
+            = IRStmt_Exit(
+                 IRExpr_Binop(
                     host_word_type==Ity_I64 ? Iop_CmpNE64 : Iop_CmpNE32,
                     callexpr,
                        host_word_type==Ity_I64
@@ -768,7 +772,7 @@ IRSB* bb_to_IR (
 
 
 /*-------------------------------------------------------------
-  A support routine for doing self-checking translations. 
+  A support routine for doing self-checking translations.
   -------------------------------------------------------------*/
 
 /* CLEAN HELPER */
