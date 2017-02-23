@@ -67,7 +67,7 @@ static Addr64 guest_PC_curr_instr;
 static IRSB *irsb;
 
 /* Is our guest binary 32 or 64bit? Set at each call to
-   disInstr_MIPS below. */
+   disInstr below. */
 static Bool mode64 = False;
 
 /* CPU has FPU and 32 dbl. prec. FP registers. */
@@ -79,8 +79,6 @@ static Bool fp_mode64 = False;
 
 #define VexArchPEP8_RegA 0
 #define VexArchPEP8_RegX 1
-
-
 
 /*------------------------------------------------------------*/
 /*---                  Offset Definitions                  ---*/
@@ -112,6 +110,87 @@ vex_printf(format, __VA_ARGS__)
 #endif
 
 /*------------------------------------------------------------*/
+/*---               IR Utility functions                   ---*/
+/*------------------------------------------------------------*/
+
+/* Add a statement to the list held by "irbb". */
+static void stmt ( IRStmt* st )
+{
+	addStmtToIRSB( irsb, st );
+}
+
+/* Generate a statement "dst := e". */
+static void assign ( IRTemp dst, IRExpr* e )
+{
+   stmt( IRStmt_WrTmp(dst, e) );
+}
+
+static IRExpr* unop ( IROp op, IRExpr* e1)
+{
+	return IRExpr_Unop(op, e1);
+}
+
+static IRExpr* binop ( IROp op, IRExpr* e1, IRExpr* e2)
+{
+	return IRExpr_Binop(op, e1, e2);
+}
+
+static IRExpr* mkU8 ( UInt i )
+{
+	vassert(i < 256);
+	return IRExpr_Const(IRConst_U8( (UChar)i ));
+}
+
+static IRExpr* mkU16 ( UInt i )
+{
+	vassert(i <= 65535);
+	return IRExpr_Const(IRConst_U16( (UShort)i ));
+}
+
+static IRExpr* mkU32 ( UInt i )
+{
+	vassert(i <= 0xFFFFFFFF);
+	return IRExpr_Const(IRConst_U32( (UInt)i ));
+}
+
+static IRExpr* mkExpr ( IRTemp tmp )
+{
+   return IRExpr_RdTmp(tmp);
+}
+
+static IRTemp newTemp ( IRType ty )
+{
+   vassert(isPlausibleIRType(ty));
+   return newIRTemp( irsb->tyenv, ty );
+}
+
+/*------------------------------------------------------------*/
+/*---               IR Generation helpers                  ---*/
+/*------------------------------------------------------------*/
+
+static void putPC(IRExpr * e)
+{
+	stmt(IRStmt_Put(OFFB_PC, e));
+}
+
+static void putPCSyscall(IRExpr * e)
+{
+	stmt(IRStmt_Put(OFFB_PC_SYSCALL, e));
+}
+
+static void putWordReg(Int reg, IRExpr* e)
+{
+    IRType ty = typeOfIRExpr(irsb->tyenv, e);
+	vassert(ty == Ity_I16);
+
+	if (reg == VexArchPEP8_RegA) {
+		stmt(IRStmt_Put(OFFB_A, e));
+	} else {
+		stmt(IRStmt_Put(OFFB_X, e));
+	}
+}
+
+/*------------------------------------------------------------*/
 /*---               PEP8 Utility functions                 ---*/
 /*------------------------------------------------------------*/
 
@@ -124,14 +203,41 @@ static UShort getWord(UShort addr)
 	return value;
 }
 
-static UShort resolveValue(const UChar cins, UShort delta)
+static UChar decodeRegister(const UChar cins)
+{
+	UChar reg;
+	Bool is_x = False;
+
+	// Check the right bit
+	if (cins >= 24 && cins <= 0x35) {
+		is_x = cins & 0x1;
+	} else if (cins >= 112 && cins <= 255) {
+		is_x = cins & 0x8;
+	} else {
+		vpanic("Tried decoding register of an instruction with no coded register.");
+	}
+
+	if (is_x) {
+		reg = OFFB_X;
+	} else {
+		reg = OFFB_A;
+	}
+	return reg;
+}
+
+static IRTemp resolveOperand(const UChar cins, UShort delta)
 {
 	UChar addr_mode;
 	UShort operand;
 	UShort value;
 	UShort direct;
 
-	operand = getWord(delta + 1);
+	IRType ty16 = Ity_I16;
+
+	IRTemp res = newTemp(ty16);
+
+	// operand = getWord(delta + 1);
+
 	// Addressing mode is coded in 1 or 3 bits depending on how
 	// many modes are valid for the instruction.
 	// For addressing modes coded on 1 bit:
@@ -159,44 +265,37 @@ static UShort resolveValue(const UChar cins, UShort delta)
 		addr_mode = cins & 0x07;
 
 		switch(addr_mode) {
-			case 0x0:
-				//newIRTemp(irsb->tyenv, UShort
-				break;
-			case 0x1:
-				break;
-			case 0x2:
-				break;
+			/* i - immediate
+			 * to make this generalisable, we return the address of the
+			 * immediate value coded in the opcode */
+			case 0x0: {
+						  assign(res, mkU16(guest_PC_curr_instr + 1));
+						  break;
+					  }
+
+			/* d - direct */
+			case 0x1: {
+						  assign(res, IRExpr_Get(guest_PC_curr_instr + 1, ty16));
+						  break;
+					  }
+			/* x - indexed by X register */
+			case 0x5: {
+						  assign(res, IRExpr_Binop(
+									  Iop_Add16,
+									  IRExpr_Get(OFFB_X, ty16),
+									  mkU16(guest_PC_curr_instr + 1)
+									  )
+								);
+						  break;
+					  }
 			default:
 				vpanic("Unimplemented PEP8 addressing mode!");
 				break;
 		}
 	}
 
-	return value;
+	return res;
 }
-
-/*------------------------------------------------------------*/
-/*---               IR Utility functions                   ---*/
-/*------------------------------------------------------------*/
-
-/* Add a statement to the list held by "irbb". */
-static void stmt ( IRStmt* st )
-{
-	addStmtToIRSB( irsb, st );
-}
-
-static IRExpr* mkU8 ( UInt i )
-{
-	vassert(i < 256);
-	return IRExpr_Const(IRConst_U8( (UChar)i ));
-}
-
-static IRExpr* mkU16 ( UInt i )
-{
-	vassert(i <= 65535);
-	return IRExpr_Const(IRConst_U16( (UShort)i ));
-}
-
 
 /*------------------------------------------------------------*/
 /*---                 Decoding functions                   ---*/
@@ -280,33 +379,6 @@ UInt get_opcode(UChar cins)
 	}
 }
 
-
-/*------------------------------------------------------------*/
-/*---               IR Generation helpers                  ---*/
-/*------------------------------------------------------------*/
-
-static void putPC(IRExpr * e)
-{
-	stmt(IRStmt_Put(OFFB_PC, e));
-}
-
-static void putPCSyscall(IRExpr * e)
-{
-	stmt(IRStmt_Put(OFFB_PC_SYSCALL, e));
-}
-
-static void putWordReg(Int reg, IRExpr* e)
-{
-    IRType ty = typeOfIRExpr(irsb->tyenv, e);
-	vassert(ty == Ity_I16);
-
-	if (reg == VexArchPEP8_RegA) {
-		stmt(IRStmt_Put(OFFB_A, e));
-	} else {
-		stmt(IRStmt_Put(OFFB_X, e));
-	}
-}
-
 /*------------------------------------------------------------*/
 /*---          Disassemble a single instruction            ---*/
 /*------------------------------------------------------------*/
@@ -346,38 +418,174 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 
 	DIP("\t0x%hx:\t0x%08hhx\t", (short)guest_PC_curr_instr, cins);
 
-	IRType ty = Ity_I16;
+	IRType ty8 = Ity_I8;
+	IRType ty16 = Ity_I16;
+	IRType ty32 = Ity_I32;
 
 	opcode = get_opcode(cins);
 
 	switch (opcode){
 
 		case PEP8_STOP:
-			printf("STOP\n");
 			putPCSyscall(mkU16(guest_PC_curr_instr));
 			putPC(mkU16(0));
 
 			dres.len = 1;
 			dres.whatNext = Dis_StopHere;
 			dres.jk_StopHere = Ijk_Sys_int128;
-
 			break;
 
 		case PEP8_NOPN:
-			printf("NOP\n");
 			/* TODO implement N */
 			putPC(mkU16(guest_PC_curr_instr + 1));
-
 			dres.len = 1;
 			break;
 
+		case PEP8_ADD:
+			{
+				IRTemp operand = resolveOperand(cins, delta);
+				UChar reg = decodeRegister(cins);
+				IRTemp value = newTemp(ty16);
+				IREndness end_le = Iend_LE;
+
+				assign(
+						value, binop(
+							   Iop_Add16,
+							   IRExpr_Get(reg, ty16),
+							   IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)))
+					  );
+				stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
+
+				// Useful temps for flags
+				IRTemp x = newTemp(ty16);
+				IRTemp y = newTemp(ty16);
+				IRTemp res = newTemp(ty16);
+				assign(x, IRExpr_Get(reg, ty16));
+				assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+				assign(res, IRExpr_RdTmp(value));
+
+				// Zero Flag
+				stmt(IRStmt_Put(
+				 			OFFB_Z,
+				 			IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
+				 						mkU8(1),
+				 						mkU8(0) )));
+
+				// Neg Flag
+				stmt(IRStmt_Put(
+				 			OFFB_N,
+				 			IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
+				 						mkU8(1),
+				 						mkU8(0) )));
+
+				// Overflow Flag
+				// overflow = (x < 32768 and y < 32768 and result >= 32768) or (x >= 32768 and y >= 32768 and result < 32768)
+				IRTemp zero = newTemp(ty16);
+				IRTemp x15 = newTemp(ty16);
+				assign(x15,
+					   binop(Iop_Shr16,
+							 binop(Iop_And16,
+								   IRExpr_RdTmp(x),
+								   mkU16(0x8000)),
+							 mkU8(15))
+					  );
+
+				IRTemp y15 = newTemp(ty16);
+				assign(y15,
+					   binop(Iop_Shr16,
+							 binop(Iop_And16,
+								   IRExpr_RdTmp(y),
+								   mkU16(0x8000)),
+							 mkU8(15))
+					  );
+
+				IRTemp r15 = newTemp(ty16);
+				assign(r15,
+					   binop(Iop_Shr16,
+							 binop(Iop_And16,
+								   IRExpr_RdTmp(res),
+								   mkU16(0x8000)),
+							 mkU8(15))
+					  );
+
+				assign(zero,
+			    	   binop(Iop_And16,
+			    		     unop(Iop_Not16, binop(Iop_Xor16, mkExpr(x15), mkExpr(y15))),
+			    		     binop(Iop_Xor16, mkExpr(x15), mkExpr(r15)))
+					  );
+
+				stmt(IRStmt_Put(OFFB_Z, mkExpr(zero)));
+
+
+				// IRExpr *left_x = binop(Iop_CmpLT32U, mkExpr(x), mkU32(32768));
+				// IRExpr *left_y = binop(Iop_CmpLT32U, mkExpr(y), mkU32(32768));
+				// IRExpr *left_res = binop(Iop_CmpLE32U, mkU32(32768), mkExpr(res));
+
+				// IRExpr *right_x = binop(Iop_CmpLE32U, mkU32(32768), mkExpr(x));
+				// IRExpr *right_y = binop(Iop_CmpLE32U, mkU32(32768), mkExpr(y));
+				// IRExpr *right_res = binop(Iop_CmpLT32U, mkExpr(res), mkU32(32768));
+				// printf("PEPS: %d\n", x);
+
+				// IRExpr *interieur = binop(Iop_And32, left_y, left_res);
+				// IRExpr *left = binop(Iop_And32, left_x, binop(Iop_And32, left_y, left_res));
+				// IRExpr *right = binop(Iop_And32, right_x, binop(Iop_And32, right_y, right_res));
+				// IRExpr *overflow = binop(Iop_Or32, left, right);
+
+				// stmt(IRStmt_Put(
+				// 			OFFB_V,
+				// 			IRExpr_ITE(
+				// 				interieur,
+				// 				mkU32(1),
+				// 				mkU32(0)
+				// 				)
+				// 			));
+
+				// // Carry Flag
+				// stmt(IRStmt_Put(
+				// 		OFFB_C,
+				// 		IRExpr_ITE(
+				// 			binop(Iop_CmpLE32U, mkU32(65536), res),
+				// 			mkU8(1),
+				// 			mkU8(0)
+				// 			)
+				// 		));
+
+				// Update PC and instr length
+				putPC(mkU16(guest_PC_curr_instr + 3));
+				dres.len = 3;
+			}
+			break;
 		case PEP8_LD:
-			printf("LDr\n");
+			{
+				IRTemp operand = resolveOperand(cins, delta);
+				IRTemp value = newTemp(ty16);
+				UChar reg = decodeRegister(cins);
 
-			stmt(IRStmt_Put(OFFB_A, IRExpr_Get(1, Ity_I16)));
-			putPC(mkU16(guest_PC_curr_instr + 3));
+				IREndness end_le = Iend_LE;
+				assign(
+						value,
+						IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand))
+					  );
+				stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
 
-			dres.len = 3;
+				// Zero Flag
+				stmt(IRStmt_Put(
+				 			OFFB_Z,
+				 			IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
+				 						mkU8(1),
+				 						mkU8(0) )));
+
+				// Neg Flag
+				stmt(IRStmt_Put(
+				 			OFFB_N,
+				 			IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
+				 						mkU8(1),
+				 						mkU8(0) )));
+
+				// Update PC and instr length
+				putPC(mkU16(guest_PC_curr_instr + 3));
+				dres.len = 3;
+			}
 			break;
 
 		default:
