@@ -460,10 +460,13 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 				IRTemp x = newTemp(ty16);
 				IRTemp y = newTemp(ty16);
 				IRTemp res = newTemp(ty16);
+				IRTemp z = newTemp(ty16);
+                assign(z, mkExpr(value));
 				assign(x, IRExpr_Get(reg, ty16));
 				assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
 				assign(res, IRExpr_RdTmp(value));
 
+                printf("PEPS DEBG: %d", OFFB_Z);
 				// Zero Flag
 				stmt(IRStmt_Put(
 				 			OFFB_Z,
@@ -480,7 +483,7 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 
 				// Overflow Flag
 				// overflow = (x < 32768 and y < 32768 and result >= 32768) or (x >= 32768 and y >= 32768 and result < 32768)
-				IRTemp zero = newTemp(ty16);
+				IRTemp ovf = newTemp(ty16);
 				IRTemp x15 = newTemp(ty16);
 				assign(x15,
 					   binop(Iop_Shr16,
@@ -508,47 +511,18 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 							 mkU8(15))
 					  );
 
-				assign(zero,
-			    	   binop(Iop_And16,
+				assign(ovf,
+				       binop(Iop_And16,
 			    		     unop(Iop_Not16, binop(Iop_Xor16, mkExpr(x15), mkExpr(y15))),
 			    		     binop(Iop_Xor16, mkExpr(x15), mkExpr(r15)))
-					  );
+				      );
 
-				stmt(IRStmt_Put(OFFB_Z, mkExpr(zero)));
+				stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
 
-
-				// IRExpr *left_x = binop(Iop_CmpLT32U, mkExpr(x), mkU32(32768));
-				// IRExpr *left_y = binop(Iop_CmpLT32U, mkExpr(y), mkU32(32768));
-				// IRExpr *left_res = binop(Iop_CmpLE32U, mkU32(32768), mkExpr(res));
-
-				// IRExpr *right_x = binop(Iop_CmpLE32U, mkU32(32768), mkExpr(x));
-				// IRExpr *right_y = binop(Iop_CmpLE32U, mkU32(32768), mkExpr(y));
-				// IRExpr *right_res = binop(Iop_CmpLT32U, mkExpr(res), mkU32(32768));
-				// printf("PEPS: %d\n", x);
-
-				// IRExpr *interieur = binop(Iop_And32, left_y, left_res);
-				// IRExpr *left = binop(Iop_And32, left_x, binop(Iop_And32, left_y, left_res));
-				// IRExpr *right = binop(Iop_And32, right_x, binop(Iop_And32, right_y, right_res));
-				// IRExpr *overflow = binop(Iop_Or32, left, right);
-
-				// stmt(IRStmt_Put(
-				// 			OFFB_V,
-				// 			IRExpr_ITE(
-				// 				interieur,
-				// 				mkU32(1),
-				// 				mkU32(0)
-				// 				)
-				// 			));
-
-				// // Carry Flag
-				// stmt(IRStmt_Put(
-				// 		OFFB_C,
-				// 		IRExpr_ITE(
-				// 			binop(Iop_CmpLE32U, mkU32(65536), res),
-				// 			mkU8(1),
-				// 			mkU8(0)
-				// 			)
-				// 		));
+				// stmt(IRStmt_Put(OFFB_N, mkExpr(ovf)));
+				// stmt(IRStmt_Put(OFFB_Z, mkExpr(ovf)));
+				// stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
+				// stmt(IRStmt_Put(OFFB_C, mkExpr(ovf)));
 
 				// Update PC and instr length
 				putPC(mkU16(guest_PC_curr_instr + 3));

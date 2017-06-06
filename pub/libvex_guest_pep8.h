@@ -52,14 +52,14 @@ typedef
       /* 24 */ UShort guest_pc_at_syscall; /* Needed for syscalls */
 
       /* CPU State Flags */
-      /* 26 */ UChar guest_n;    /* Negative Flag */
-      /* 27 */ UChar guest_z;    /* Zero Flag */
-      /* 28 */ UChar guest_v;    /* Overflow Flag */
-      /* 29 */ UChar guest_c;    /* Carry Flag */
+      /* 26 */ UShort guest_n;    /* Negative Flag */
+      /* 28 */ UShort guest_z;    /* Zero Flag */
+      /* 30 */ UShort guest_v;    /* Overflow Flag */
+      /* 32 */ UShort guest_c;    /* Carry Flag */
 
-	  /* Pad to 16 byte multiple */
-      /* 30 */ UChar guest_pad0;
-      /* 31 */ UChar guest_pad1;
+      /* XX */ UInt poubelle;     /* Padding */
+      /* XX */ UInt poubelle1;    /* Padding */
+      /* XX */ UInt poubelle2;    /* Padding */
 
 } VexGuestPEP8State;
 
