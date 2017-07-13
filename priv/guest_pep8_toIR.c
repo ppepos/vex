@@ -100,12 +100,12 @@ static Bool fp_mode64 = False;
 
 #ifndef _WIN32
 #define DIP(format, args...)           \
-	if (vex_traceflags & VEX_TRACE_FE)  \
+		if (vex_traceflags & VEX_TRACE_FE)  \
 vex_printf(format, ## args)
 
 #else
 #define DIP(format, ...)           \
-	if (vex_traceflags & VEX_TRACE_FE)  \
+		if (vex_traceflags & VEX_TRACE_FE)  \
 vex_printf(format, __VA_ARGS__)
 #endif
 
@@ -116,52 +116,52 @@ vex_printf(format, __VA_ARGS__)
 /* Add a statement to the list held by "irbb". */
 static void stmt ( IRStmt* st )
 {
-	addStmtToIRSB( irsb, st );
+		addStmtToIRSB( irsb, st );
 }
 
 /* Generate a statement "dst := e". */
 static void assign ( IRTemp dst, IRExpr* e )
 {
-   stmt( IRStmt_WrTmp(dst, e) );
+		stmt( IRStmt_WrTmp(dst, e) );
 }
 
 static IRExpr* unop ( IROp op, IRExpr* e1)
 {
-	return IRExpr_Unop(op, e1);
+		return IRExpr_Unop(op, e1);
 }
 
 static IRExpr* binop ( IROp op, IRExpr* e1, IRExpr* e2)
 {
-	return IRExpr_Binop(op, e1, e2);
+		return IRExpr_Binop(op, e1, e2);
 }
 
 static IRExpr* mkU8 ( UInt i )
 {
-	vassert(i < 256);
-	return IRExpr_Const(IRConst_U8( (UChar)i ));
+		vassert(i < 256);
+		return IRExpr_Const(IRConst_U8( (UChar)i ));
 }
 
 static IRExpr* mkU16 ( UInt i )
 {
-	vassert(i <= 65535);
-	return IRExpr_Const(IRConst_U16( (UShort)i ));
+		vassert(i <= 65535);
+		return IRExpr_Const(IRConst_U16( (UShort)i ));
 }
 
 static IRExpr* mkU32 ( UInt i )
 {
-	vassert(i <= 0xFFFFFFFF);
-	return IRExpr_Const(IRConst_U32( (UInt)i ));
+		vassert(i <= 0xFFFFFFFF);
+		return IRExpr_Const(IRConst_U32( (UInt)i ));
 }
 
 static IRExpr* mkExpr ( IRTemp tmp )
 {
-   return IRExpr_RdTmp(tmp);
+		return IRExpr_RdTmp(tmp);
 }
 
 static IRTemp newTemp ( IRType ty )
 {
-   vassert(isPlausibleIRType(ty));
-   return newIRTemp( irsb->tyenv, ty );
+		vassert(isPlausibleIRType(ty));
+		return newIRTemp( irsb->tyenv, ty );
 }
 
 /*------------------------------------------------------------*/
@@ -170,24 +170,24 @@ static IRTemp newTemp ( IRType ty )
 
 static void putPC(IRExpr * e)
 {
-	stmt(IRStmt_Put(OFFB_PC, e));
+		stmt(IRStmt_Put(OFFB_PC, e));
 }
 
 static void putPCSyscall(IRExpr * e)
 {
-	stmt(IRStmt_Put(OFFB_PC_SYSCALL, e));
+		stmt(IRStmt_Put(OFFB_PC_SYSCALL, e));
 }
 
 static void putWordReg(Int reg, IRExpr* e)
 {
-    IRType ty = typeOfIRExpr(irsb->tyenv, e);
-	vassert(ty == Ity_I16);
+		IRType ty = typeOfIRExpr(irsb->tyenv, e);
+		vassert(ty == Ity_I16);
 
-	if (reg == VexArchPEP8_RegA) {
-		stmt(IRStmt_Put(OFFB_A, e));
-	} else {
-		stmt(IRStmt_Put(OFFB_X, e));
-	}
+		if (reg == VexArchPEP8_RegA) {
+				stmt(IRStmt_Put(OFFB_A, e));
+		} else {
+				stmt(IRStmt_Put(OFFB_X, e));
+		}
 }
 
 /*------------------------------------------------------------*/
@@ -196,105 +196,105 @@ static void putWordReg(Int reg, IRExpr* e)
 
 static UShort getWord(UShort addr)
 {
-	UShort value;
-	value = guest_code[addr];
-	value <<= 8;
-	value += guest_code[addr + 1];
-	return value;
+		UShort value;
+		value = guest_code[addr];
+		value <<= 8;
+		value += guest_code[addr + 1];
+		return value;
 }
 
 static UChar decodeRegister(const UChar cins)
 {
-	UChar reg;
-	Bool is_x = False;
+		UChar reg;
+		Bool is_x = False;
 
-	// Check the right bit
-	if (cins >= 24 && cins <= 0x35) {
-		is_x = cins & 0x1;
-	} else if (cins >= 112 && cins <= 255) {
-		is_x = cins & 0x8;
-	} else {
-		vpanic("Tried decoding register of an instruction with no coded register.");
-	}
+		// Check the right bit
+		if (cins >= 24 && cins <= 0x35) {
+				is_x = cins & 0x1;
+		} else if (cins >= 112 && cins <= 255) {
+				is_x = cins & 0x8;
+		} else {
+				vpanic("Tried decoding register of an instruction with no coded register.");
+		}
 
-	if (is_x) {
-		reg = OFFB_X;
-	} else {
-		reg = OFFB_A;
-	}
-	return reg;
+		if (is_x) {
+				reg = OFFB_X;
+		} else {
+				reg = OFFB_A;
+		}
+		return reg;
 }
 
 static IRTemp resolveOperand(const UChar cins, UShort delta)
 {
-	UChar addr_mode;
-	UShort operand;
-	UShort value;
-	UShort direct;
+		UChar addr_mode;
+		UShort operand;
+		UShort value;
+		UShort direct;
 
-	IRType ty16 = Ity_I16;
+		IRType ty16 = Ity_I16;
 
-	IRTemp res = newTemp(ty16);
+		IRTemp res = newTemp(ty16);
 
-	// operand = getWord(delta + 1);
+		// operand = getWord(delta + 1);
 
-	// Addressing mode is coded in 1 or 3 bits depending on how
-	// many modes are valid for the instruction.
-	// For addressing modes coded on 1 bit:
-	//	* 0 : immediate
-	//	* 1 : indexed (offsetted by the value in RegX)
-	// All these instructions are coded so that the resulting
-	// word is an unsigned short smaller or equal to 0b0001011a
-	// where 'a' is the addressing mode
-	if (cins <= 0x17) {
-		addr_mode = cins & 0x01;
-		if (addr_mode == 0) {
+		// Addressing mode is coded in 1 or 3 bits depending on how
+		// many modes are valid for the instruction.
+		// For addressing modes coded on 1 bit:
+		//	* 0 : immediate
+		//	* 1 : indexed (offsetted by the value in RegX)
+		// All these instructions are coded so that the resulting
+		// word is an unsigned short smaller or equal to 0b0001011a
+		// where 'a' is the addressing mode
+		if (cins <= 0x17) {
+				addr_mode = cins & 0x01;
+				if (addr_mode == 0) {
+				}
 		}
-	}
 
-	// For addressing modes coded on 3 bits:
-	//  * 000 : i - immediate
-	//  * 001 : d - direct
-	//  * 010 : n - indirect
-	//  * 011 : s - offsetted on the stack
-	//  * 100 : sf - indirect offsetted on the stack
-	//  * 101 : x - offsetted by the value in RegX
-	//  * 110 : sx - On the stack offsetted by the value in RegX
-	//  * 111 : sxf - Offsetted by X in the struct referenced on the stack
-	else {
-		addr_mode = cins & 0x07;
+		// For addressing modes coded on 3 bits:
+		//  * 000 : i - immediate
+		//  * 001 : d - direct
+		//  * 010 : n - indirect
+		//  * 011 : s - offsetted on the stack
+		//  * 100 : sf - indirect offsetted on the stack
+		//  * 101 : x - offsetted by the value in RegX
+		//  * 110 : sx - On the stack offsetted by the value in RegX
+		//  * 111 : sxf - Offsetted by X in the struct referenced on the stack
+		else {
+				addr_mode = cins & 0x07;
 
-		switch(addr_mode) {
-			/* i - immediate
-			 * to make this generalisable, we return the address of the
-			 * immediate value coded in the opcode */
-			case 0x0: {
-						  assign(res, mkU16(guest_PC_curr_instr + 1));
-						  break;
-					  }
+				switch(addr_mode) {
+						/* i - immediate
+						 * to make this generalisable, we return the address of the
+						 * immediate value coded in the opcode */
+						case 0x0: {
+										  assign(res, mkU16(guest_PC_curr_instr + 1));
+										  break;
+								  }
 
-			/* d - direct */
-			case 0x1: {
-						  assign(res, IRExpr_Get(guest_PC_curr_instr + 1, ty16));
-						  break;
-					  }
-			/* x - indexed by X register */
-			case 0x5: {
-						  assign(res, IRExpr_Binop(
-									  Iop_Add16,
-									  IRExpr_Get(OFFB_X, ty16),
-									  mkU16(guest_PC_curr_instr + 1)
-									  )
-								);
-						  break;
-					  }
-			default:
-				vpanic("Unimplemented PEP8 addressing mode!");
-				break;
+								  /* d - direct */
+						case 0x1: {
+										  assign(res, IRExpr_Get(guest_PC_curr_instr + 1, ty16));
+										  break;
+								  }
+								  /* x - indexed by X register */
+						case 0x5: {
+										  assign(res, IRExpr_Binop(
+																  Iop_Add16,
+																  IRExpr_Get(OFFB_X, ty16),
+																  mkU16(guest_PC_curr_instr + 1)
+																  )
+												);
+										  break;
+								  }
+						default:
+								  vpanic("Unimplemented PEP8 addressing mode!");
+								  break;
+				}
 		}
-	}
 
-	return res;
+		return res;
 }
 
 /*------------------------------------------------------------*/
@@ -302,81 +302,81 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 /*------------------------------------------------------------*/
 UInt get_opcode(UChar cins)
 {
-	UInt real_bitmask;
+		UInt real_bitmask;
 
-	if (cins <= 3) {
-		real_bitmask = cins >> 0;
+		if (cins <= 3) {
+				real_bitmask = cins >> 0;
 
-		switch (real_bitmask) {
+				switch (real_bitmask) {
 
-			case 0: return PEP8_STOP;
-			case 1: return PEP8_RETTR;
-			case 2: return PEP8_MOVSPA;
-			case 3: return PEP8_MOVFLGA;
-			default: {
-						 return -1;
-					 }
-		}
+						case 0: return PEP8_STOP;
+						case 1: return PEP8_RETTR;
+						case 2: return PEP8_MOVSPA;
+						case 3: return PEP8_MOVFLGA;
+						default: {
+										 return -1;
+								 }
+				}
 
-	} else if (cins <= 35) {
-		real_bitmask = cins >> 1;
-		switch (real_bitmask) {
-			case 2: return PEP8_BR;
-			case 3: return PEP8_BRLE;
-			case 4: return PEP8_BRLT;
-			case 5: return PEP8_BREQ;
-			case 6: return PEP8_BRNE;
-			case 7: return PEP8_BRGE;
-			case 8: return PEP8_BRGT;
-			case 9: return PEP8_BRV;
-			case 10: return PEP8_BRC;
-			case 11: return PEP8_CALL;
-			case 12: return PEP8_NOT;
-			case 13: return PEP8_NEG;
-			case 14: return PEP8_ASL;
-			case 15: return PEP8_ASR;
-			case 16: return PEP8_ROL;
-			case 17: return PEP8_ROR;
-			default: {
-						 return -1;
-					 }
+		} else if (cins <= 35) {
+				real_bitmask = cins >> 1;
+				switch (real_bitmask) {
+						case 2: return PEP8_BR;
+						case 3: return PEP8_BRLE;
+						case 4: return PEP8_BRLT;
+						case 5: return PEP8_BREQ;
+						case 6: return PEP8_BRNE;
+						case 7: return PEP8_BRGE;
+						case 8: return PEP8_BRGT;
+						case 9: return PEP8_BRV;
+						case 10: return PEP8_BRC;
+						case 11: return PEP8_CALL;
+						case 12: return PEP8_NOT;
+						case 13: return PEP8_NEG;
+						case 14: return PEP8_ASL;
+						case 15: return PEP8_ASR;
+						case 16: return PEP8_ROL;
+						case 17: return PEP8_ROR;
+						default: {
+										 return -1;
+								 }
+				}
+		} else if (cins <= 39) {
+				real_bitmask = cins >> 2;
+				return PEP8_NOPN;
+		} else if (cins <= 111) {
+				real_bitmask = cins >> 3;
+				switch (real_bitmask) {
+						case 5: return PEP8_NOP;
+						case 6: return PEP8_DECI;
+						case 7: return PEP8_DECO;
+						case 8: return PEP8_STRO;
+						case 9: return PEP8_CHARI;
+						case 10: return PEP8_CHARO;
+						case 11: return PEP8_RETN;
+						case 12: return PEP8_ADDSP;
+						case 13: return PEP8_SUBSP;
+						default: {
+										 return -1;
+								 }
+				}
+		} else {
+				real_bitmask = cins >> 4;
+				switch (real_bitmask) {
+						case 7: return PEP8_ADD;
+						case 8: return PEP8_SUB;
+						case 9: return PEP8_AND;
+						case 10: return PEP8_OR;
+						case 11: return PEP8_CP;
+						case 12: return PEP8_LD;
+						case 13: return PEP8_LDBYTE;
+						case 14: return PEP8_ST;
+						case 15: return PEP8_STBYTE;
+						default: {
+										 return -1;
+								 }
+				}
 		}
-	} else if (cins <= 39) {
-		real_bitmask = cins >> 2;
-		return PEP8_NOPN;
-	} else if (cins <= 111) {
-		real_bitmask = cins >> 3;
-		switch (real_bitmask) {
-			case 5: return PEP8_NOP;
-			case 6: return PEP8_DECI;
-			case 7: return PEP8_DECO;
-			case 8: return PEP8_STRO;
-			case 9: return PEP8_CHARI;
-			case 10: return PEP8_CHARO;
-			case 11: return PEP8_RETN;
-			case 12: return PEP8_ADDSP;
-			case 13: return PEP8_SUBSP;
-			default: {
-						 return -1;
-					 }
-		}
-	} else {
-		real_bitmask = cins >> 4;
-		switch (real_bitmask) {
-			case 7: return PEP8_ADD;
-			case 8: return PEP8_SUB;
-			case 9: return PEP8_AND;
-			case 10: return PEP8_OR;
-			case 11: return PEP8_CP;
-			case 12: return PEP8_LD;
-			case 13: return PEP8_LDBYTE;
-			case 14: return PEP8_ST;
-			case 15: return PEP8_STBYTE;
-			default: {
-						 return -1;
-					 }
-		}
-	}
 }
 
 /*------------------------------------------------------------*/
@@ -389,189 +389,215 @@ UInt get_opcode(UChar cins)
    here. */
 
 static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
-			Addr),
-		Bool         resteerCisOk,
-		void*        callback_opaque,
-		Long         delta64,
-		const VexArchInfo* archinfo,
-		const VexAbiInfo*  abiinfo,
-		Bool         sigill_diag )
+						Addr),
+				Bool         resteerCisOk,
+				void*        callback_opaque,
+				Long         delta64,
+				const VexArchInfo* archinfo,
+				const VexAbiInfo*  abiinfo,
+				Bool         sigill_diag )
 {
-	IRTemp t0, t1, t2, t3, t4, t5, t6, t7;
+		IRTemp t0, t1, t2, t3, t4, t5, t6, t7;
 
-	IRExpr *lastn = pep8_lastn;  /* last jump addr */
-	IRStmt *bstmt = pep8_bstmt;  /* branch (Exit) stmt */
+		IRExpr *lastn = pep8_lastn;  /* last jump addr */
+		IRStmt *bstmt = pep8_bstmt;  /* branch (Exit) stmt */
 
-	DisResult dres;
-	UChar opcode;
-	UChar cins;
+		DisResult dres;
+		UChar opcode;
+		UChar cins;
 
-	/* Set result defaults. */
-	dres.whatNext = Dis_Continue;
-	dres.len = 0;
-	dres.continueAt = 0;
-	dres.jk_StopHere = Ijk_INVALID;
+		/* Set result defaults. */
+		dres.whatNext = Dis_Continue;
+		dres.len = 0;
+		dres.continueAt = 0;
+		dres.jk_StopHere = Ijk_INVALID;
 
-	UShort delta = (UShort) delta64;
-	const UChar *code = guest_code + delta;
-	cins = *code;
+		UShort delta = (UShort) delta64;
+		const UChar *code = guest_code + delta;
+		cins = *code;
 
-	DIP("\t0x%hx:\t0x%08hhx\t", (short)guest_PC_curr_instr, cins);
+		DIP("\t0x%hx:\t0x%08hhx\t", (short)guest_PC_curr_instr, cins);
 
-	IRType ty8 = Ity_I8;
-	IRType ty16 = Ity_I16;
-	IRType ty32 = Ity_I32;
+		IRType ty8 = Ity_I8;
+		IRType ty16 = Ity_I16;
+		IRType ty32 = Ity_I32;
 
-	opcode = get_opcode(cins);
+		opcode = get_opcode(cins);
 
-	switch (opcode){
+		switch (opcode){
 
-		case PEP8_STOP:
-			putPCSyscall(mkU16(guest_PC_curr_instr));
-			putPC(mkU16(0));
+				case PEP8_STOP:
+						putPCSyscall(mkU16(guest_PC_curr_instr));
+						putPC(mkU16(0));
 
-			dres.len = 1;
-			dres.whatNext = Dis_StopHere;
-			dres.jk_StopHere = Ijk_Sys_int128;
-			break;
+						dres.len = 1;
+						dres.whatNext = Dis_StopHere;
+						dres.jk_StopHere = Ijk_Sys_int128;
+						break;
 
-		case PEP8_NOPN:
-			/* TODO implement N */
-			putPC(mkU16(guest_PC_curr_instr + 1));
-			dres.len = 1;
-			break;
+				case PEP8_NOPN:
+						/* TODO implement N */
+						putPC(mkU16(guest_PC_curr_instr + 1));
+						dres.len = 1;
+						break;
 
-		case PEP8_ADD:
-			{
-				IRTemp operand = resolveOperand(cins, delta);
-				UChar reg = decodeRegister(cins);
-				IRTemp value = newTemp(ty16);
-				IREndness end_le = Iend_LE;
+				case PEP8_ADD:
+						{
+								IRTemp operand = resolveOperand(cins, delta);
+								UChar reg = decodeRegister(cins);
+								IRTemp value = newTemp(ty16);
+								IREndness end_le = Iend_LE;
 
-				assign(
-						value, binop(
-							   Iop_Add16,
-							   IRExpr_Get(reg, ty16),
-							   IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)))
-					  );
-				stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
+								assign(value,
+								       binop(Iop_Add16,
+										     IRExpr_Get(reg, ty16),
+										     IRExpr_Load(Iend_LE,
+													     ty16,
+														 IRExpr_RdTmp(operand)
+														 )
+											 )
+									   );
 
-				// Useful temps for flags
-				IRTemp x = newTemp(ty16);
-				IRTemp y = newTemp(ty16);
-				IRTemp res = newTemp(ty16);
-				IRTemp z = newTemp(ty16);
-                assign(z, mkExpr(value));
-				assign(x, IRExpr_Get(reg, ty16));
-				assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
-				assign(res, IRExpr_RdTmp(value));
+								stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
 
-                printf("PEPS DEBG: %d", OFFB_Z);
-				// Zero Flag
-				stmt(IRStmt_Put(
-				 			OFFB_Z,
-				 			IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
-				 						mkU8(1),
-				 						mkU8(0) )));
+								// Useful temps for flags
+								IRTemp x = newTemp(ty16);
+								IRTemp y = newTemp(ty16);
+								IRTemp res = newTemp(ty16);
+								IRTemp z = newTemp(ty16);
+								assign(z, mkExpr(value));
+								assign(x, IRExpr_Get(reg, ty16));
+								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								assign(res, IRExpr_RdTmp(value));
 
-				// Neg Flag
-				stmt(IRStmt_Put(
-				 			OFFB_N,
-				 			IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
-				 						mkU8(1),
-				 						mkU8(0) )));
+								printf("PEPS DEBG: %d", OFFB_Z);
+								// Zero Flag
+								stmt(IRStmt_Put(
+														OFFB_Z,
+														IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
+																mkU16(1),
+																mkU16(0) )));
 
-				// Overflow Flag
-				// overflow = (x < 32768 and y < 32768 and result >= 32768) or (x >= 32768 and y >= 32768 and result < 32768)
-				IRTemp ovf = newTemp(ty16);
-				IRTemp x15 = newTemp(ty16);
-				assign(x15,
-					   binop(Iop_Shr16,
-							 binop(Iop_And16,
-								   IRExpr_RdTmp(x),
-								   mkU16(0x8000)),
-							 mkU8(15))
-					  );
+								// Neg Flag
+								stmt(IRStmt_Put(
+														OFFB_N,
+														IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
+																mkU16(1),
+																mkU16(0) )));
 
-				IRTemp y15 = newTemp(ty16);
-				assign(y15,
-					   binop(Iop_Shr16,
-							 binop(Iop_And16,
-								   IRExpr_RdTmp(y),
-								   mkU16(0x8000)),
-							 mkU8(15))
-					  );
+								// Overflow Flag
+								// overflow = (x < 32768 and y < 32768 and result >= 32768) or (x >= 32768 and y >= 32768 and result < 32768)
+								IRTemp ovf = newTemp(ty16);
+								IRTemp x15 = newTemp(ty16);
+								assign(x15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(x),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
 
-				IRTemp r15 = newTemp(ty16);
-				assign(r15,
-					   binop(Iop_Shr16,
-							 binop(Iop_And16,
-								   IRExpr_RdTmp(res),
-								   mkU16(0x8000)),
-							 mkU8(15))
-					  );
+								IRTemp y15 = newTemp(ty16);
+								assign(y15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(y),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
 
-				assign(ovf,
-				       binop(Iop_And16,
-			    		     unop(Iop_Not16, binop(Iop_Xor16, mkExpr(x15), mkExpr(y15))),
-			    		     binop(Iop_Xor16, mkExpr(x15), mkExpr(r15)))
-				      );
+								IRTemp r15 = newTemp(ty16);
+								assign(r15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(res),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
 
-				stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
+								assign(ovf,
+												binop(Iop_And16,
+														unop(Iop_Not16, binop(Iop_Xor16, mkExpr(x15), mkExpr(y15))),
+														binop(Iop_Xor16, mkExpr(x15), mkExpr(r15)))
+									  );
 
-				// stmt(IRStmt_Put(OFFB_N, mkExpr(ovf)));
-				// stmt(IRStmt_Put(OFFB_Z, mkExpr(ovf)));
-				// stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
-				// stmt(IRStmt_Put(OFFB_C, mkExpr(ovf)));
+								stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
 
-				// Update PC and instr length
-				putPC(mkU16(guest_PC_curr_instr + 3));
-				dres.len = 3;
-			}
-			break;
-		case PEP8_LD:
-			{
-				IRTemp operand = resolveOperand(cins, delta);
-				IRTemp value = newTemp(ty16);
-				UChar reg = decodeRegister(cins);
+								// Carry flag
+								// (x+y) > 0xffff ? 1 : 0
 
-				IREndness end_le = Iend_LE;
-				assign(
-						value,
-						IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand))
-					  );
-				stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
+								IRTemp ext_x = newTemp(ty32);
+								IRTemp ext_y = newTemp(ty32);
+								IRTemp sum = newTemp(ty32);
+								IRTemp cbit = newTemp(ty16);
 
-				// Zero Flag
-				stmt(IRStmt_Put(
-				 			OFFB_Z,
-				 			IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
-				 						mkU8(1),
-				 						mkU8(0) )));
+								// Zero extend x and y
+								assign(ext_x, unop(Iop_16Uto32, IRExpr_RdTmp(x)));
+								assign(ext_y, unop(Iop_16Uto32, IRExpr_RdTmp(y)));
+								assign(sum, binop(Iop_Add32,
+												  IRExpr_RdTmp(ext_x),
+												  IRExpr_RdTmp(ext_y)));
 
-				// Neg Flag
-				stmt(IRStmt_Put(
-				 			OFFB_N,
-				 			IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
-				 						mkU8(1),
-				 						mkU8(0) )));
+								assign(cbit, IRExpr_ITE(binop(Iop_CmpLE32U,
+															  mkU32(0xFFFF),
+														      IRExpr_RdTmp(sum)
+															  ),
+														mkU16(0x1),
+														mkU16(0x0)
+													   )
+									   );
 
-				// Update PC and instr length
-				putPC(mkU16(guest_PC_curr_instr + 3));
-				dres.len = 3;
-			}
-			break;
+								stmt(IRStmt_Put(OFFB_C, mkExpr(cbit)));
 
-		default:
-			DIP("Instruction not implemented.");
-			break;
-	}
 
-	// dres.whatNext = Dis_StopHere;
-	// dres.jk_StopHere = Ijk_Boring;
-	// dres.continueAt = 0;
+								// Update PC and instr length
+								putPC(mkU16(guest_PC_curr_instr + 3));
+								dres.len = 3;
+						}
+						break;
+				case PEP8_LD:
+						{
+								IRTemp operand = resolveOperand(cins, delta);
+								IRTemp value = newTemp(ty16);
+								UChar reg = decodeRegister(cins);
 
-	return dres;
+								IREndness end_le = Iend_LE;
+								assign(
+												value,
+												IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand))
+									  );
+								stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
+
+								// Zero Flag
+								stmt(IRStmt_Put(
+														OFFB_Z,
+														IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
+																mkU8(1),
+																mkU8(0) )));
+
+								// Neg Flag
+								stmt(IRStmt_Put(
+														OFFB_N,
+														IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
+																mkU8(1),
+																mkU8(0) )));
+
+								// Update PC and instr length
+								putPC(mkU16(guest_PC_curr_instr + 3));
+								dres.len = 3;
+						}
+						break;
+
+				default:
+						DIP("Instruction not implemented.");
+						break;
+		}
+
+		// dres.whatNext = Dis_StopHere;
+		// dres.jk_StopHere = Ijk_Boring;
+		// dres.continueAt = 0;
+
+		return dres;
 
 }
 /*------------------------------------------------------------*/
@@ -581,32 +607,32 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 /* Disassemble a single instruction into IR.  The instruction
    is located in host memory at &guest_code[delta]. */
 DisResult disInstr_PEP8( IRSB*        irsb_IN,
-		Bool         (*resteerOkFn) ( void *, Addr ),
-		Bool         resteerCisOk,
-		void*        callback_opaque,
-		const UChar* guest_code_IN,
-		Long         delta,
-		Addr         guest_IP,
-		VexArch      guest_arch,
-		const VexArchInfo* archinfo,
-		const VexAbiInfo*  abiinfo,
-		VexEndness   host_endness_IN,
-		Bool         sigill_diag_IN )
+				Bool         (*resteerOkFn) ( void *, Addr ),
+				Bool         resteerCisOk,
+				void*        callback_opaque,
+				const UChar* guest_code_IN,
+				Long         delta,
+				Addr         guest_IP,
+				VexArch      guest_arch,
+				const VexArchInfo* archinfo,
+				const VexAbiInfo*  abiinfo,
+				VexEndness   host_endness_IN,
+				Bool         sigill_diag_IN )
 {
-	DisResult dres;
-	/* Set globals (see top of this file) */
-	vassert(guest_arch == VexArchPEP8);
+		DisResult dres;
+		/* Set globals (see top of this file) */
+		vassert(guest_arch == VexArchPEP8);
 
-	guest_code = guest_code_IN;
-	irsb = irsb_IN;
-	host_endness = host_endness_IN;
-	guest_endness = archinfo->endness == VexEndnessLE ? Iend_LE : Iend_BE;
-	guest_PC_curr_instr = (Addr64)guest_IP;
+		guest_code = guest_code_IN;
+		irsb = irsb_IN;
+		host_endness = host_endness_IN;
+		guest_endness = archinfo->endness == VexEndnessLE ? Iend_LE : Iend_BE;
+		guest_PC_curr_instr = (Addr64)guest_IP;
 
-	dres = disInstr_PEP8_WRK(resteerOkFn, resteerCisOk, callback_opaque,
-			delta, archinfo, abiinfo, sigill_diag_IN);
+		dres = disInstr_PEP8_WRK(resteerOkFn, resteerCisOk, callback_opaque,
+						delta, archinfo, abiinfo, sigill_diag_IN);
 
-	return dres;
+		return dres;
 }
 
 /*--------------------------------------------------------------------*/
