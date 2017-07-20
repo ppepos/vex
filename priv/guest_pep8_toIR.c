@@ -268,24 +268,23 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 						/* i - immediate
 						 * to make this generalisable, we return the address of the
 						 * immediate value coded in the opcode */
-						case 0x0: {
-										  assign(res, mkU16(guest_PC_curr_instr + 1));
-										  break;
-								  }
+						case 0x0:
+								{
+										assign(res, mkU16(guest_PC_curr_instr + 1));
+								}
+								break;
 
-								  /* x - indexed by X register */
-						case 0x5: {
-										  assign(res, IRExpr_Binop(
-																  Iop_Add16,
-																  IRExpr_Get(OFFB_X, ty16),
-																  mkU16(guest_PC_curr_instr + 1)
-																  )
-												);
-										  break;
-								  }
+						/* d - direct */
 						case 0x1:
 								{
 										assign(res, IRExpr_Load(Iend_LE, ty16, mkU16(guest_PC_curr_instr + 1)));
+								}
+								break;
+
+						/* x - indexed by X register */
+						case 0x5:
+								{
+										vpanic("Unimplemented PEP8 addressing mode!");
 								}
 								break;
 						default:
