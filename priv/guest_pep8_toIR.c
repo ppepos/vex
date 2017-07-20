@@ -273,11 +273,6 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 										  break;
 								  }
 
-								  /* d - direct */
-						case 0x1: {
-										  assign(res, IRExpr_Get(guest_PC_curr_instr + 1, ty16));
-										  break;
-								  }
 								  /* x - indexed by X register */
 						case 0x5: {
 										  assign(res, IRExpr_Binop(
@@ -288,6 +283,11 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 												);
 										  break;
 								  }
+						case 0x1:
+								{
+										assign(res, IRExpr_Load(Iend_LE, ty16, mkU16(guest_PC_curr_instr + 1)));
+								}
+								break;
 						default:
 								  vpanic("Unimplemented PEP8 addressing mode!");
 								  break;
