@@ -587,6 +587,25 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								dres.len = 3;
 						}
 						break;
+				case PEP8_ST:
+						{
+								IRTemp operand_addr = resolveOperand(cins, delta);
+								IRTemp operand = newTemp(ty16);
+
+								IRTemp value = newTemp(ty16);
+								UChar reg = decodeRegister(cins);
+
+								IREndness end_le = Iend_LE;
+
+								assign(operand, IRExpr_Load(end_le, ty16, IRExpr_RdTmp(operand_addr)));
+								assign(value, IRExpr_Get(reg, ty16));
+								stmt(IRStmt_Store(end_le, IRExpr_RdTmp(operand), IRExpr_RdTmp(value)));
+
+								// Update PC and instr length
+								putPC(mkU16(guest_PC_curr_instr + 3));
+								dres.len = 3;
+						}
+						break;
 
 				default:
 						DIP("Instruction not implemented.");
