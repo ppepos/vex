@@ -462,10 +462,69 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 						dres.jk_StopHere = Ijk_Sys_int128;
 						break;
 
+				case PEP8_BR:
+						{
+								IRTemp target = newTemp(ty16);
+								IRTemp operand = resolveOperand(cins, delta);
+
+								assign(target, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								putPC(IRExpr_RdTmp(operand));
+
+								dres.whatNext = Dis_StopHere;
+								dres.jk_StopHere = Ijk_Boring;
+								dres.len = 3;
+						}
+						break;
+
+				case PEP8_BRGE:
+						{
+								/**
+								 * Because PEP8 supports some jumps conditionnal (branches)
+								 * where the target can be unknown at instrumentation time
+								 * we need to invert the condition so the IRStmt_Exit dst
+								 * is known (the following instruction's addr). We can but
+								 * the dynamic jump target in the PC otherwise.
+								 */
+
+								UShort operand_addr = resolveOperandAddr(cins, delta);
+								UShort target = getWord(operand_addr);
+
+								stmt(IRStmt_Exit(binop(
+														Iop_CmpEQ16,
+														IRExpr_Get(OFFB_N, ty16),
+														mkU16(1)
+														),
+												 Ijk_Boring,
+												 IRConst_U16(guest_PC_curr_instr + 3),
+												 OFFB_PC));
+
+								putPC(mkU16(target));
+
+								dres.whatNext = Dis_StopHere;
+								dres.jk_StopHere = Ijk_Boring;
+								dres.len = 3;
+						}
+						break;
+
 				case PEP8_NOPN:
 						/* TODO implement N */
 						putPC(mkU16(guest_PC_curr_instr + 1));
 						dres.len = 1;
+						break;
+
+				case PEP8_DECI:
+				case PEP8_DECO:
+				case PEP8_STRO:
+				case PEP8_CHARO:
+				case PEP8_CHARI:
+						{
+								putPCSyscall(mkU16(guest_PC_curr_instr));
+								putPC(mkU16(guest_PC_curr_instr + 3));
+
+								dres.len = 3;
+								dres.whatNext = Dis_StopHere;
+								dres.jk_StopHere = Ijk_Sys_int128;
+						}
 						break;
 
 				case PEP8_ADD:
@@ -491,13 +550,10 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								IRTemp x = newTemp(ty16);
 								IRTemp y = newTemp(ty16);
 								IRTemp res = newTemp(ty16);
-								IRTemp z = newTemp(ty16);
-								assign(z, mkExpr(value));
 								assign(x, IRExpr_Get(reg, ty16));
 								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
 								assign(res, IRExpr_RdTmp(value));
 
-								printf("PEPS DEBG: %d", OFFB_Z);
 								// Zero Flag
 								stmt(IRStmt_Put(
 														OFFB_Z,
@@ -582,6 +638,187 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								dres.len = 3;
 						}
 						break;
+
+				case PEP8_SUB:
+						{
+								IRTemp operand = resolveOperand(cins, delta);
+								UChar reg = decodeRegister(cins);
+								IRTemp value = newTemp(ty16);
+								IREndness end_le = Iend_LE;
+
+								assign(value,
+								       binop(Iop_Sub16,
+										     IRExpr_Get(reg, ty16),
+										     IRExpr_Load(Iend_LE,
+													     ty16,
+														 IRExpr_RdTmp(operand)
+														 )
+											 )
+									   );
+
+								stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
+
+								// Useful temps for flags
+								IRTemp x = newTemp(ty16);
+								IRTemp y = newTemp(ty16);
+								IRTemp res = newTemp(ty16);
+								assign(x, IRExpr_Get(reg, ty16));
+								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								assign(res, IRExpr_RdTmp(value));
+
+								// Zero Flag
+								stmt(IRStmt_Put(
+														OFFB_Z,
+														IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
+																mkU16(1),
+																mkU16(0) )));
+
+								// Neg Flag
+								stmt(IRStmt_Put(
+														OFFB_N,
+														IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
+																mkU16(1),
+																mkU16(0) )));
+
+								// Overflow Flag
+								// overflow = (x < 32768 and y < 32768 and result >= 32768) or (x >= 32768 and y >= 32768 and result < 32768)
+								IRTemp ovf = newTemp(ty16);
+								IRTemp x15 = newTemp(ty16);
+								assign(x15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(x),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
+
+								IRTemp y15 = newTemp(ty16);
+								assign(y15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(y),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
+
+								IRTemp r15 = newTemp(ty16);
+								assign(r15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(res),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
+
+								assign(ovf,
+												binop(Iop_And16,
+														unop(Iop_Not16, binop(Iop_Xor16, mkExpr(x15), mkExpr(y15))),
+														binop(Iop_Xor16, mkExpr(x15), mkExpr(r15)))
+									  );
+
+								stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
+
+								// Carry flag
+								// Skipped because the behavior is not exhaustively specified
+								// on substractions.
+								// Nobody should ever use it anyways. I hope.
+
+
+								// Update PC and instr length
+								putPC(mkU16(guest_PC_curr_instr + 3));
+								dres.len = 3;
+						}
+						break;
+
+				case PEP8_CP:
+						{
+								IRTemp operand = resolveOperand(cins, delta);
+								UChar reg = decodeRegister(cins);
+								IRTemp value = newTemp(ty16);
+								IREndness end_le = Iend_LE;
+
+								assign(value,
+								       binop(Iop_Sub16,
+										     IRExpr_Get(reg, ty16),
+										     IRExpr_Load(Iend_LE,
+													     ty16,
+														 IRExpr_RdTmp(operand)
+														 )
+											 )
+									   );
+
+								// Useful temps for flags
+								IRTemp x = newTemp(ty16);
+								IRTemp y = newTemp(ty16);
+								IRTemp res = newTemp(ty16);
+								assign(x, IRExpr_Get(reg, ty16));
+								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								assign(res, IRExpr_RdTmp(value));
+
+								// Zero Flag
+								stmt(IRStmt_Put(
+														OFFB_Z,
+														IRExpr_ITE( binop(Iop_CmpEQ16, mkU16(0), mkExpr(value)),
+																mkU16(1),
+																mkU16(0) )));
+
+								// Neg Flag
+								stmt(IRStmt_Put(
+														OFFB_N,
+														IRExpr_ITE( binop(Iop_CmpLT32S, unop(Iop_16Sto32, mkExpr(value)), mkU32(0)),
+																mkU16(1),
+																mkU16(0) )));
+
+								// Overflow Flag
+								// overflow = (x < 32768 and y < 32768 and result >= 32768) or (x >= 32768 and y >= 32768 and result < 32768)
+								IRTemp ovf = newTemp(ty16);
+								IRTemp x15 = newTemp(ty16);
+								assign(x15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(x),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
+
+								IRTemp y15 = newTemp(ty16);
+								assign(y15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(y),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
+
+								IRTemp r15 = newTemp(ty16);
+								assign(r15,
+												binop(Iop_Shr16,
+														binop(Iop_And16,
+																IRExpr_RdTmp(res),
+																mkU16(0x8000)),
+														mkU8(15))
+									  );
+
+								assign(ovf,
+												binop(Iop_And16,
+														unop(Iop_Not16, binop(Iop_Xor16, mkExpr(x15), mkExpr(y15))),
+														binop(Iop_Xor16, mkExpr(x15), mkExpr(r15)))
+									  );
+
+								stmt(IRStmt_Put(OFFB_V, mkExpr(ovf)));
+
+								// Carry flag
+								// Skipped because the behavior is not exhaustively specified
+								// on substractions.
+								// Nobody should ever use it anyways. I hope.
+
+
+								// Update PC and instr length
+								putPC(mkU16(guest_PC_curr_instr + 3));
+								dres.len = 3;
+						}
+						break;
+
 				case PEP8_LD:
 						{
 								IRTemp operand = resolveOperand(cins, delta);
