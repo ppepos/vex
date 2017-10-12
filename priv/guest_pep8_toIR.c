@@ -248,7 +248,12 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 		// where 'a' is the addressing mode
 		if (cins <= 0x17) {
 				addr_mode = cins & 0x01;
-				if (addr_mode == 0) {
+				/* Immediate mode (i) */
+				if (addr_mode == 0x0) {
+						assign(res, mkU16(guest_PC_curr_instr + 1));
+				/* Indexed mode (x) */
+				} else if (addr_mode == 0x1) {
+						vpanic("Unimplemented PEP8 addressing mode!");
 				}
 		}
 
