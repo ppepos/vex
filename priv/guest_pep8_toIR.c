@@ -265,35 +265,60 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 				addr_mode = cins & 0x07;
 
 				switch(addr_mode) {
-						/* i - immediate
-						 * to make this generalisable, we return the address of the
-						 * immediate value coded in the opcode */
-						case 0x0:
-								{
-										assign(res, mkU16(guest_PC_curr_instr + 1));
-								}
-								break;
+				/* i - immediate
+				 * to make this generalisable, we return the address of the
+				 * immediate value coded in the opcode */
+				case 0x0:
+						assign(res, mkU16(guest_PC_curr_instr + 1));
+						break;
 
-						/* d - direct */
-						case 0x1:
-								{
-										assign(res, IRExpr_Load(Iend_LE, ty16, mkU16(guest_PC_curr_instr + 1)));
-								}
-								break;
+				/* d - direct */
+				case 0x1:
+						assign(res, IRExpr_Load(Iend_LE, ty16, mkU16(guest_PC_curr_instr + 1)));
+						break;
 
-						/* x - indexed by X register */
-						case 0x5:
-								{
-										vpanic("Unimplemented PEP8 addressing mode!");
-								}
-								break;
-						default:
-								  vpanic("Unimplemented PEP8 addressing mode!");
-								  break;
+				/* x - indexed by X register */
+				case 0x5:
+						vpanic("Unimplemented PEP8 addressing mode!");
+						break;
+				default:
+						vpanic("Unknown PEP8 addressing mode!");
+						break;
 				}
 		}
 
 		return res;
+}
+
+static IRTemp resolveOperandAddr(const UChar cins, const UShort delta)
+{
+		UChar addr_mode;
+		UShort operand_addr;
+
+		// Addressing mode is coded in 1 or 3 bits depending on how
+		// many modes are valid for the instruction.
+		// For addressing modes coded on 1 bit:
+		//	* 0 : immediate
+		//	* 1 : indexed (offsetted by the value in RegX)
+		// All these instructions are coded so that the resulting
+		// word is an unsigned short smaller or equal to 0b0001011a
+		// where 'a' is the addressing mode
+		if (cins <= 0x17) {
+				addr_mode = cins & 0x01;
+				/* Immediate mode (i) */
+				if (addr_mode == 0x0) {
+						operand_addr = guest_PC_curr_instr + 1;
+				/* Indexed mode (x) */
+				} else if (addr_mode == 0x1) {
+						vpanic("Unimplemented PEP8 addressing mode!");
+				}
+		}
+		/**
+		 * Instructions with 3bit-encoded addressing modes are left
+		 * unsupported until they are required (if ever)
+		 */
+
+		return operand_addr;
 }
 
 /*------------------------------------------------------------*/
@@ -313,32 +338,30 @@ UInt get_opcode(UChar cins)
 						case 2: return PEP8_MOVSPA;
 						case 3: return PEP8_MOVFLGA;
 						default: {
-										 return -1;
-								 }
+								return -1;
+						}
 				}
 
 		} else if (cins <= 35) {
 				real_bitmask = cins >> 1;
 				switch (real_bitmask) {
-						case 2: return PEP8_BR;
-						case 3: return PEP8_BRLE;
-						case 4: return PEP8_BRLT;
-						case 5: return PEP8_BREQ;
-						case 6: return PEP8_BRNE;
-						case 7: return PEP8_BRGE;
-						case 8: return PEP8_BRGT;
-						case 9: return PEP8_BRV;
-						case 10: return PEP8_BRC;
-						case 11: return PEP8_CALL;
-						case 12: return PEP8_NOT;
-						case 13: return PEP8_NEG;
-						case 14: return PEP8_ASL;
-						case 15: return PEP8_ASR;
-						case 16: return PEP8_ROL;
-						case 17: return PEP8_ROR;
-						default: {
-										 return -1;
-								 }
+				case 2: return PEP8_BR;
+				case 3: return PEP8_BRLE;
+				case 4: return PEP8_BRLT;
+				case 5: return PEP8_BREQ;
+				case 6: return PEP8_BRNE;
+				case 7: return PEP8_BRGE;
+				case 8: return PEP8_BRGT;
+				case 9: return PEP8_BRV;
+				case 10: return PEP8_BRC;
+				case 11: return PEP8_CALL;
+				case 12: return PEP8_NOT;
+				case 13: return PEP8_NEG;
+				case 14: return PEP8_ASL;
+				case 15: return PEP8_ASR;
+				case 16: return PEP8_ROL;
+				case 17: return PEP8_ROR;
+				default: return -1;
 				}
 		} else if (cins <= 39) {
 				real_bitmask = cins >> 2;
