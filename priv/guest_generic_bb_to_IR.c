@@ -230,11 +230,14 @@ IRSB* bb_to_IR (
    vassert(vex_control.guest_max_bytes <= 5000);
    vassert(vex_control.guest_chase_thresh >= 0);
    vassert(vex_control.guest_chase_thresh < vex_control.guest_max_insns);
-   vassert(guest_word_type == Ity_I32 || guest_word_type == Ity_I64);
+   vassert(guest_word_type == Ity_I32 || guest_word_type == Ity_I64 ||
+				   guest_word_type == Ity_I16);
 
    if (guest_word_type == Ity_I32) {
       vassert(szB_GUEST_IP == 4);
       vassert((offB_GUEST_IP % 4) == 0);
+   } else if (guest_word_type == Ity_I16) {
+      vassert(szB_GUEST_IP == 2);
    } else {
       vassert(szB_GUEST_IP == 8);
       vassert((offB_GUEST_IP % 8) == 0);

@@ -46,6 +46,7 @@
 #include "libvex_guest_mips32.h"
 #include "libvex_guest_mips64.h"
 #include "libvex_guest_tilegx.h"
+#include "libvex_guest_pep8.h"
 
 #include "main_globals.h"
 #include "main_util.h"
@@ -70,6 +71,7 @@
 #include "guest_s390_defs.h"
 #include "guest_mips_defs.h"
 #include "guest_tilegx_defs.h"
+#include "guest_pep8_defs.h"
 
 #include "host_generic_simd128.h"
 
@@ -166,6 +168,13 @@
 #define TILEGXST(f) vassert(0)
 #endif
 
+#if defined(VGA_pep8) || defined(VEXMULTIARCH)
+#define PEP8FN(f) f
+#define PEP8ST(f) f
+#else
+#define PEP8FN(f) NULL
+#define PEP8ST(f) vassert(0)
+#endif
 
 /* This file contains the top level interface to the library. */
 
@@ -548,6 +557,22 @@ IRSB *LibVEX_Lift (  VexTranslateArgs *vta,
          vassert(sizeof( ((VexGuestTILEGXState*)0)->guest_NRADDR     ) == 8);
          break;
 
+      case VexArchPEP8:
+         preciseMemExnsFn
+            = PEP8FN(guest_pep8_state_requires_precise_mem_exns);
+         disInstrFn             = PEP8FN(disInstr_PEP8);
+         specHelper             = PEP8FN(guest_pep8_spechelper);
+         guest_word_type        = Ity_I16;
+         guest_layout           = PEP8FN(&pep8Guest_layout);
+         offB_GUEST_IP          = offsetof(VexGuestPEP8State, guest_pc);
+         szB_GUEST_IP           = sizeof( ((VexGuestPEP8State*)0)->guest_pc );
+         vassert(vta->archinfo_guest.endness == VexEndnessLE
+                 || vta->archinfo_guest.endness == VexEndnessBE);
+         vassert(0 == sizeof(VexGuestPEP8State) % LibVEX_GUEST_STATE_ALIGN);
+         pep8_lastn = NULL;
+         pep8_bstmt = NULL;
+         break;
+
       default:
          vpanic("LibVEX_Translate: unsupported guest insn set");
    }
@@ -877,6 +902,14 @@ void LibVEX_Codegen (   VexTranslateArgs *vta,
          guest_sizeB            = sizeof(VexGuestTILEGXState);
          offB_HOST_EvC_COUNTER  = offsetof(VexGuestTILEGXState,host_EvC_COUNTER);
          offB_HOST_EvC_FAILADDR = offsetof(VexGuestTILEGXState,host_EvC_FAILADDR);
+         break;
+
+      case VexArchPEP8:
+         preciseMemExnsFn =
+            PEP8FN(guest_pep8_state_requires_precise_mem_exns);
+         guest_sizeB            = sizeof(VexGuestPEP8State);
+         offB_HOST_EvC_COUNTER  = offsetof(VexGuestPEP8State,host_EvC_COUNTER);
+         offB_HOST_EvC_FAILADDR = offsetof(VexGuestPEP8State,host_EvC_FAILADDR);
          break;
 
       default:
@@ -1549,6 +1582,9 @@ void LibVEX_default_VexAbiInfo ( /*OUT*/VexAbiInfo* vbi )
 
 static IRType arch_word_size (VexArch arch) {
    switch (arch) {
+      case VexArchPEP8:
+         return Ity_I16;
+
       case VexArchX86:
       case VexArchARM:
       case VexArchMIPS32:
@@ -2103,6 +2139,9 @@ static void check_hwcaps ( VexArch arch, UInt hwcaps )
          }
 
       case VexArchTILEGX:
+         return;
+
+      case VexArchPEP8:
          return;
 
       default:

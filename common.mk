@@ -20,7 +20,8 @@ PUB_HEADERS = \
 	pub/libvex_guest_ppc64.h	\
 	pub/libvex_guest_s390x.h	\
 	pub/libvex_s390x_common.h	\
-	pub/libvex_guest_mips32.h
+	pub/libvex_guest_mips32.h	\
+	pub/libvex_guest_pep8.h
 
 # These headers are private, but we enumerate them to trigger rebuilds
 # when any of them change
@@ -45,6 +46,7 @@ PRIV_HEADERS = \
 	priv/guest_arm_defs.h		\
 	priv/guest_ppc_defs.h		\
 	priv/guest_mips_defs.h		\
+	priv/guest_pep8_defs.h		\
 	priv/s390_disasm.h		\
 	priv/s390_defs.h		\
 	priv/ir_match.h			\
@@ -87,13 +89,15 @@ NORMAL_OBJS = \
 	priv/guest_ppc_helpers.o	\
 	priv/guest_s390_helpers.o	\
 	priv/guest_mips_helpers.o	\
+	priv/guest_pep8_helpers.o	\
 	priv/guest_x86_toIR.o		\
 	priv/guest_amd64_toIR.o		\
 	priv/guest_arm_toIR.o		\
 	priv/guest_arm64_toIR.o		\
 	priv/guest_ppc_toIR.o		\
 	priv/guest_s390_toIR.o		\
-	priv/guest_mips_toIR.o
+	priv/guest_mips_toIR.o		\
+	priv/guest_pep8_toIR.o
 
 SINGLEARCH_OBJS = priv/main_main.o
 MULTIARCH_OBJS = priv/multiarch_main_main.o
