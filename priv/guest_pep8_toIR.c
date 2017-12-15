@@ -93,6 +93,7 @@ static Bool fp_mode64 = False;
 #define OFFB_Z			offsetof(VexGuestPEP8State, guest_z)
 #define OFFB_V			offsetof(VexGuestPEP8State, guest_v)
 #define OFFB_C			offsetof(VexGuestPEP8State, guest_c)
+#define OFFB_PREV_PC_SYSCALL	offsetof(VexGuestPEP8State, guest_prev_pc_at_syscall)
 
 /*------------------------------------------------------------*/
 /*---                  Debugging output                    ---*/
@@ -176,6 +177,11 @@ static void putPC(IRExpr * e)
 static void putPCSyscall(IRExpr * e)
 {
 		stmt(IRStmt_Put(OFFB_PC_SYSCALL, e));
+}
+
+static void putPPCSyscall(IRExpr * e)
+{
+		stmt(IRStmt_Put(OFFB_PREV_PC_SYSCALL, e));
 }
 
 static void putWordReg(Int reg, IRExpr* e)
@@ -455,6 +461,7 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 
 				case PEP8_STOP:
 						putPCSyscall(mkU16(guest_PC_curr_instr));
+						putPPCSyscall(mkU16(guest_PC_curr_instr));
 						putPC(mkU16(0));
 
 						dres.len = 1;
@@ -519,6 +526,7 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 				case PEP8_CHARI:
 						{
 								putPCSyscall(mkU16(guest_PC_curr_instr));
+								putPPCSyscall(mkU16(guest_PC_curr_instr));
 								putPC(mkU16(guest_PC_curr_instr + 3));
 
 								dres.len = 3;

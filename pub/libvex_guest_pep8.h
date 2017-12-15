@@ -57,7 +57,8 @@ typedef
       /* 30 */ UShort guest_v;    /* Overflow Flag */
       /* 32 */ UShort guest_c;    /* Carry Flag */
 
-      /* XX */ UInt poubelle;     /* Padding */
+      /* 34 */ UShort guest_prev_pc_at_syscall; /* Needed for syscalls with angr */
+      /* 36 */ UShort poubelle;   /* Padding */
       /* XX */ UInt poubelle1;    /* Padding */
       /* XX */ UInt poubelle2;    /* Padding */
 
