@@ -285,7 +285,7 @@ static IRTemp resolveOperand(const UChar cins, UShort delta)
 
 				/* d - direct */
 				case 0x1:
-						assign(res, IRExpr_Load(Iend_LE, ty16, mkU16(guest_PC_curr_instr + 1)));
+						assign(res, IRExpr_Load(Iend_BE, ty16, mkU16(guest_PC_curr_instr + 1)));
 						break;
 
 				/* x - indexed by X register */
@@ -471,11 +471,8 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 
 				case PEP8_BR:
 						{
-								IRTemp target = newTemp(ty16);
-								IRTemp operand = resolveOperand(cins, delta);
-
-								assign(target, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
-								putPC(IRExpr_RdTmp(operand));
+								UShort target = getWord(delta + 1);
+								putPC(mkU16(target));
 
 								dres.whatNext = Dis_StopHere;
 								dres.jk_StopHere = Ijk_Boring;
@@ -489,12 +486,15 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								 * Because PEP8 supports some jumps conditionnal (branches)
 								 * where the target can be unknown at instrumentation time
 								 * we need to invert the condition so the IRStmt_Exit dst
-								 * is known (the following instruction's addr). We can but
+								 * is known (the following instruction's addr). We can put
 								 * the dynamic jump target in the PC otherwise.
 								 */
 
-								UShort operand_addr = resolveOperandAddr(cins, delta);
-								UShort target = getWord(operand_addr);
+								UShort target = getWord(delta + 1);
+								putPC(mkU16(target));
+								// UShort operand_addr = resolveOperandAddr(cins, delta);
+								// UShort target = getWord(operand_addr);
+
 
 								stmt(IRStmt_Exit(binop(
 														Iop_CmpEQ16,
@@ -506,7 +506,6 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 												 OFFB_PC));
 
 								putPC(mkU16(target));
-
 								dres.whatNext = Dis_StopHere;
 								dres.jk_StopHere = Ijk_Boring;
 								dres.len = 3;
@@ -541,11 +540,12 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								UChar reg = decodeRegister(cins);
 								IRTemp value = newTemp(ty16);
 								IREndness end_le = Iend_LE;
+								IREndness end_be = Iend_BE;
 
 								assign(value,
 								       binop(Iop_Add16,
 										     IRExpr_Get(reg, ty16),
-										     IRExpr_Load(Iend_LE,
+										     IRExpr_Load(Iend_BE,
 													     ty16,
 														 IRExpr_RdTmp(operand)
 														 )
@@ -559,7 +559,7 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								IRTemp y = newTemp(ty16);
 								IRTemp res = newTemp(ty16);
 								assign(x, IRExpr_Get(reg, ty16));
-								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								assign(y, IRExpr_Load(Iend_BE, ty16, IRExpr_RdTmp(operand)));
 								assign(res, IRExpr_RdTmp(value));
 
 								// Zero Flag
@@ -653,11 +653,12 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								UChar reg = decodeRegister(cins);
 								IRTemp value = newTemp(ty16);
 								IREndness end_le = Iend_LE;
+								IREndness end_be = Iend_BE;
 
 								assign(value,
 								       binop(Iop_Sub16,
 										     IRExpr_Get(reg, ty16),
-										     IRExpr_Load(Iend_LE,
+										     IRExpr_Load(Iend_BE,
 													     ty16,
 														 IRExpr_RdTmp(operand)
 														 )
@@ -671,7 +672,7 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								IRTemp y = newTemp(ty16);
 								IRTemp res = newTemp(ty16);
 								assign(x, IRExpr_Get(reg, ty16));
-								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								assign(y, IRExpr_Load(Iend_BE, ty16, IRExpr_RdTmp(operand)));
 								assign(res, IRExpr_RdTmp(value));
 
 								// Zero Flag
@@ -744,11 +745,12 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								UChar reg = decodeRegister(cins);
 								IRTemp value = newTemp(ty16);
 								IREndness end_le = Iend_LE;
+								IREndness end_be = Iend_BE;
 
 								assign(value,
 								       binop(Iop_Sub16,
 										     IRExpr_Get(reg, ty16),
-										     IRExpr_Load(Iend_LE,
+										     IRExpr_Load(Iend_BE,
 													     ty16,
 														 IRExpr_RdTmp(operand)
 														 )
@@ -760,7 +762,7 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								IRTemp y = newTemp(ty16);
 								IRTemp res = newTemp(ty16);
 								assign(x, IRExpr_Get(reg, ty16));
-								assign(y, IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand)));
+								assign(y, IRExpr_Load(Iend_BE, ty16, IRExpr_RdTmp(operand)));
 								assign(res, IRExpr_RdTmp(value));
 
 								// Zero Flag
@@ -834,9 +836,10 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								UChar reg = decodeRegister(cins);
 
 								IREndness end_le = Iend_LE;
+								IREndness end_be = Iend_BE;
 								assign(
 												value,
-												IRExpr_Load(Iend_LE, ty16, IRExpr_RdTmp(operand))
+												IRExpr_Load(Iend_BE, ty16, IRExpr_RdTmp(operand))
 									  );
 								stmt(IRStmt_Put(reg, IRExpr_RdTmp(value)));
 
@@ -868,10 +871,11 @@ static DisResult disInstr_PEP8_WRK ( Bool(*resteerOkFn) (/*opaque */void *,
 								UChar reg = decodeRegister(cins);
 
 								IREndness end_le = Iend_LE;
+								IREndness end_be = Iend_BE;
 
-								assign(operand, IRExpr_Load(end_le, ty16, IRExpr_RdTmp(operand_addr)));
+								assign(operand, IRExpr_Load(end_be, ty16, IRExpr_RdTmp(operand_addr)));
 								assign(value, IRExpr_Get(reg, ty16));
-								stmt(IRStmt_Store(end_le, IRExpr_RdTmp(operand), IRExpr_RdTmp(value)));
+								stmt(IRStmt_Store(end_be, IRExpr_RdTmp(operand), IRExpr_RdTmp(value)));
 
 								// Update PC and instr length
 								putPC(mkU16(guest_PC_curr_instr + 3));
